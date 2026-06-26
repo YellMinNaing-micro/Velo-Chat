@@ -160,6 +160,22 @@ const Chat = () => {
     }
   };
 
+  const handleStartDirectChat = async (friendId) => {
+    try {
+      const response = await api.post(`/api/chatrooms/dm/${friendId}`);
+      const room = response.data;
+      
+      // Add to rooms list if it doesn't exist
+      if (!rooms.some(r => r.id === room.id)) {
+        setRooms(prev => [...prev, room]);
+      }
+      
+      handleRoomSelect(room);
+    } catch (err) {
+      console.error('Failed to start direct chat:', err);
+    }
+  };
+
   // 4. Send Message
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -439,13 +455,21 @@ const Chat = () => {
               </div>
             ) : (
               friends.map((friend) => (
-                <div key={friend.id} style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px'
-                }}>
+                <div 
+                  key={friend.id} 
+                  onClick={() => handleStartDirectChat(friend.id)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
                   <div style={{
                     width: '8px',
                     height: '8px',
