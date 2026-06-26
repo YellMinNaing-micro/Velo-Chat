@@ -46,7 +46,7 @@ const Register = ({ onNavigateToLogin }) => {
       gap: '24px'
     }}>
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px', color: '#fff' }}>Create Account</h2>
+        <h2 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>Create Account</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Join VeloChat and start chatting instantly</p>
       </div>
 
