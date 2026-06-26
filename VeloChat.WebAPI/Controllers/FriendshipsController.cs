@@ -135,4 +135,32 @@ public class FriendshipsController : ControllerBase
 
         return Ok(new { Incoming = incoming, Outgoing = outgoing });
     }
+
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchUsers([FromQuery] string query)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
+
+        if (string.IsNullOrWhiteSpace(query)) return Ok(new System.Collections.Generic.List<object>());
+
+        var users = await _context.Users
+            .Where(u => u.Id != userId)
+            .Where(u => u.UserName.Contains(query) || u.Email.Contains(query))
+            .Select(u => new
+            {
+                u.Id,
+                u.UserName,
+                u.ProfilePictureUrl,
+                FriendshipStatus = _context.Friendships
+                    .Where(f => (f.UserId == userId && f.FriendId == u.Id) || 
+                                (f.UserId == u.Id && f.FriendId == userId))
+                    .Select(f => f.Status)
+                    .FirstOrDefault() ?? "None"
+            })
+            .Take(10)
+            .ToListAsync();
+
+        return Ok(users);
+    }
 }
