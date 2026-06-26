@@ -260,15 +260,15 @@ const Chat = () => {
     }}>
       {/* Sidebar (Left) */}
       <div style={{
-        borderRight: '1px solid var(--glass-border)',
+        borderRight: '1px solid var(--border-light)',
         display: 'flex',
         flexDirection: 'column',
-        background: 'rgba(5, 3, 17, 0.3)'
+        background: 'rgba(0, 0, 0, 0.02)'
       }}>
         {/* User Profile Header */}
         <div style={{
           padding: '20px',
-          borderBottom: '1px solid var(--glass-border)',
+          borderBottom: '1px solid var(--border-light)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -278,19 +278,19 @@ const Chat = () => {
               width: '40px',
               height: '40px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
+              background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a78bfa 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: '600',
               color: 'white',
               fontSize: '18px',
-              border: '2px solid rgba(255, 255, 255, 0.2)'
+              border: '2px solid rgba(255, 255, 255, 0.4)'
             }}>
               {user?.username?.substring(0, 2).toUpperCase()}
             </div>
             <div>
-              <div style={{ fontWeight: '600', color: 'white', fontSize: '15px' }}>{user?.username}</div>
+              <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '15px' }}>{user?.username}</div>
               <div style={{ fontSize: '12px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <Circle size={8} fill="currentColor" /> Active Now
               </div>
@@ -563,14 +563,14 @@ const Chat = () => {
             {/* Chat Room Header */}
             <div style={{
               padding: '16px 24px',
-              borderBottom: '1px solid var(--glass-border)',
+              borderBottom: '1px solid var(--border-light)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'rgba(15, 12, 38, 0.2)'
+              background: 'rgba(255, 255, 255, 0.2)'
             }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'white' }}>{activeRoom.roomName}</h3>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>{activeRoom.roomName}</h3>
                 <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Users size={14} /> {activeRoom.participants?.length || 1} participant(s)
                 </div>
@@ -631,13 +631,13 @@ const Chat = () => {
                         borderTopRightRadius: isOwnMessage ? '2px' : '16px',
                         borderTopLeftRadius: isOwnMessage ? '16px' : '2px',
                         background: isOwnMessage 
-                          ? 'linear-gradient(135deg, var(--accent-primary) 0%, rgba(139, 92, 246, 0.7) 100%)' 
-                          : 'rgba(255, 255, 255, 0.05)',
-                        border: isOwnMessage ? 'none' : '1px solid var(--glass-border)',
-                        color: 'white',
+                          ? 'var(--bubble-own)' 
+                          : 'var(--bubble-other)',
+                        border: isOwnMessage ? 'none' : '1px solid var(--border-light)',
+                        color: isOwnMessage ? 'white' : 'var(--text-primary)',
                         fontSize: '15px',
                         wordBreak: 'break-word',
-                        boxShadow: isOwnMessage ? '0 4px 12px rgba(139, 92, 246, 0.2)' : 'none'
+                        boxShadow: isOwnMessage ? '0 4px 12px var(--accent-glow)' : 'none'
                       }}>
                         {msg.content}
 
@@ -693,8 +693,8 @@ const Chat = () => {
             {/* Input Panel */}
             <div style={{
               padding: '16px 24px',
-              borderTop: '1px solid var(--glass-border)',
-              background: 'rgba(15, 12, 38, 0.3)'
+              borderTop: '1px solid var(--border-light)',
+              background: 'rgba(255, 255, 255, 0.02)'
             }}>
               <form onSubmit={handleSendMessage} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -756,10 +756,10 @@ const Chat = () => {
             }}>
               <MessageSquare size={36} />
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <h3 style={{ fontSize: '20px', color: 'white', fontWeight: '600', marginBottom: '4px' }}>No Active Conversation</h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Select a conversation from the sidebar or start a new chat room!</p>
-            </div>
+             <div style={{ textAlign: 'center' }}>
+               <h3 style={{ fontSize: '20px', color: 'var(--text-primary)', fontWeight: '600', marginBottom: '4px' }}>No Active Conversation</h3>
+               <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Select a conversation from the sidebar or start a new chat room!</p>
+             </div>
           </div>
         )}
       </div>
