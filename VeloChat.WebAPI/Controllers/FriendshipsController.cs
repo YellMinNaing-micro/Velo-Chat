@@ -146,11 +146,12 @@ public class FriendshipsController : ControllerBase
 
         var users = await _context.Users
             .Where(u => u.Id != userId)
-            .Where(u => u.UserName.Contains(query) || u.Email.Contains(query))
+            .Where(u => u.UserName.Contains(query) || (u.FullName != null && u.FullName.Contains(query)) || u.Email.Contains(query))
             .Select(u => new
             {
                 u.Id,
                 u.UserName,
+                u.FullName,
                 u.ProfilePictureUrl,
                 FriendshipStatus = _context.Friendships
                     .Where(f => (f.UserId == userId && f.FriendId == u.Id) || 
