@@ -24,6 +24,7 @@ const Chat = () => {
   const [friendEmailOrId, setFriendEmailOrId] = useState('');
   const [friendError, setFriendError] = useState('');
   const [friendSuccess, setFriendSuccess] = useState('');
+  const [pendingRequests, setPendingRequests] = useState({ incoming: [], outgoing: [] });
 
   // Typing indicator states
   const [typingUsers, setTypingUsers] = useState({}); // { roomId: { username: boolean } }
@@ -39,8 +40,20 @@ const Chat = () => {
 
       const friendsResponse = await api.get('/api/friendships/list');
       setFriends(friendsResponse.data);
+
+      const pendingResponse = await api.get('/api/friendships/pending');
+      setPendingRequests(pendingResponse.data);
     } catch (err) {
       console.error('Error fetching data:', err);
+    }
+  };
+
+  const handleAcceptFriendRequest = async (senderId) => {
+    try {
+      await api.post(`/api/friendships/accept/${senderId}`);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to accept friend request:', err);
     }
   };
 
@@ -427,6 +440,49 @@ const Chat = () => {
               ))
             )}
           </div>
+
+          {/* Pending Requests List */}
+          {pendingRequests.incoming && pendingRequests.incoming.length > 0 && (
+            <>
+              <div style={{
+                padding: '16px 20px 4px 20px',
+                fontSize: '12px',
+                fontWeight: '600',
+                textTransform: 'uppercase',
+                color: 'var(--accent-primary)',
+                letterSpacing: '0.5px'
+              }}>
+                Pending Requests
+              </div>
+              <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {pendingRequests.incoming.map((req) => (
+                  <div key={req.id} style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px dashed rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{req.sender.userName}</span>
+                    <button
+                      onClick={() => handleAcceptFriendRequest(req.sender.id)}
+                      className="btn-premium"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        borderRadius: '6px',
+                        boxShadow: 'none'
+                      }}
+                    >
+                      Accept
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Add Friend Form */}
           <form onSubmit={handleSendFriendRequest} style={{
