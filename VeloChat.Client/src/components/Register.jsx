@@ -5,6 +5,7 @@ import { User, Mail, Lock, Image, CheckCircle, AlertCircle } from 'lucide-react'
 const Register = ({ onNavigateToLogin }) => {
   const { register } = useAuth();
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [profilePictureUrl, setProfilePictureUrl] = useState('');
@@ -18,7 +19,7 @@ const Register = ({ onNavigateToLogin }) => {
     setLoading(true);
 
     try {
-      await register(username, email, password, profilePictureUrl || null);
+      await register(username, email, password, profilePictureUrl || null, fullName || null);
       setSuccess(true);
       setTimeout(() => {
         onNavigateToLogin();
@@ -96,6 +97,21 @@ const Register = ({ onNavigateToLogin }) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              style={{ width: '100%', paddingLeft: '48px' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-secondary)' }}>Full Name</label>
+          <div style={{ position: 'relative' }}>
+            <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              className="glass-input"
+              placeholder="Your Full Name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               style={{ width: '100%', paddingLeft: '48px' }}
             />
           </div>
