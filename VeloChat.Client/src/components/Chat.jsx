@@ -26,6 +26,12 @@ const Chat = () => {
   const [friendSuccess, setFriendSuccess] = useState('');
   const [pendingRequests, setPendingRequests] = useState({ incoming: [], outgoing: [] });
 
+  // Friend Search states
+  const [showAddFriend, setShowAddFriend] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
   // Typing indicator states
   const [typingUsers, setTypingUsers] = useState({}); // { roomId: { username: boolean } }
 
@@ -249,6 +255,95 @@ const Chat = () => {
     }
   };
 
+  // Handle Search Input Change
+  const handleSearchChange = async (e) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    setFriendError('');
+    setFriendSuccess('');
+
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const response = await api.get(`/api/friendships/search?query=${encodeURIComponent(q)}`);
+      setSearchResults(response.data);
+    } catch (err) {
+      console.error('Error searching users:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Add friend by user ID (from search result)
+  const handleAddFriendById = async (userId) => {
+    setFriendError('');
+    setFriendSuccess('');
+    try {
+      await api.post(`/api/friendships/request/${userId}`);
+      setFriendSuccess('Friend request sent!');
+      // Update the search results to show pending status
+      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, friendshipStatus: 'Pending' } : u));
+      fetchData();
+    } catch (err) {
+      setFriendError(typeof err?.response?.data === 'string' ? err.response.data : 'Failed to send friend request.');
+    }
+  };
+
+  const renderFriendAction = (targetUser) => {
+    if (targetUser.friendshipStatus === 'Accepted') {
+      return (
+        <button
+          onClick={() => handleStartDirectChat(targetUser.id)}
+          style={{
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: 'none',
+            color: 'var(--success)',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Chat
+        </button>
+      );
+    }
+    if (targetUser.friendshipStatus === 'Pending') {
+      return (
+        <span style={{
+          fontSize: '11px',
+          color: 'var(--text-secondary)',
+          fontWeight: '500',
+          padding: '4px 8px'
+        }}>
+          Pending
+        </span>
+      );
+    }
+    return (
+      <button
+        onClick={() => handleAddFriendById(targetUser.id)}
+        style={{
+          background: 'var(--accent-primary)',
+          border: 'none',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '6px',
+          fontSize: '11px',
+          fontWeight: '600',
+          cursor: 'pointer'
+        }}
+      >
+        Add
+      </button>
+    );
+  };
+
   return (
     <div className="glass-panel animate-fade-in-up" style={{
       width: '95vw',
@@ -319,11 +414,33 @@ const Chat = () => {
         {/* Action Buttons */}
         <div style={{ padding: '16px', display: 'flex', gap: '8px', borderBottom: '1px solid var(--glass-border)' }}>
           <button 
-            onClick={() => setShowCreateRoom(!showCreateRoom)} 
+            onClick={() => {
+              setShowCreateRoom(!showCreateRoom);
+              setShowAddFriend(false);
+            }} 
             className="btn-premium" 
             style={{ flex: 1, padding: '10px', fontSize: '14px', borderRadius: '8px' }}
           >
             <Plus size={16} /> New Chat
+          </button>
+          <button 
+            onClick={() => {
+              setShowAddFriend(!showAddFriend);
+              setShowCreateRoom(false);
+            }} 
+            className="btn-premium" 
+            style={{ 
+              flex: 1, 
+              padding: '10px', 
+              fontSize: '14px', 
+              borderRadius: '8px',
+              background: showAddFriend ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-panel)',
+              color: showAddFriend ? 'var(--accent-primary)' : 'var(--text-primary)',
+              border: showAddFriend ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
+              boxShadow: 'none'
+            }}
+          >
+            <UserPlus size={16} /> Add Friend
           </button>
         </div>
 
@@ -359,6 +476,100 @@ const Chat = () => {
               Create Chat Room
             </button>
           </form>
+        )}
+
+        {/* Add Friend Form (collapsible) */}
+        {showAddFriend && (
+          <div style={{
+            padding: '16px',
+            background: '#ffffff',
+            borderBottom: '1px solid var(--border-color)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                Search by Username or Name
+              </label>
+              <input 
+                type="text" 
+                placeholder="Type name to search..." 
+                className="glass-input"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                style={{ padding: '8px 12px', fontSize: '14px' }}
+              />
+            </div>
+            
+            {/* Search Results list */}
+            {searchQuery.trim() && (
+              <div style={{
+                maxHeight: '180px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                padding: '4px 0'
+              }}>
+                {searchLoading ? (
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
+                    Searching...
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '8px' }}>
+                    No users found.
+                  </div>
+                ) : (
+                  searchResults.map((u) => (
+                    <div key={u.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      padding: '8px',
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--accent-primary) 0%, #a78bfa 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: '600',
+                          fontSize: '12px',
+                          flexShrink: 0
+                        }}>
+                          {u.userName.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div style={{ overflow: 'hidden' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {u.userName}
+                          </div>
+                          {u.fullName && (
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {u.fullName}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {renderFriendAction(u)}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+            
+            {friendSuccess && <div style={{ fontSize: '11px', color: 'var(--success)' }}>{friendSuccess}</div>}
+            {friendError && <div style={{ fontSize: '11px', color: 'var(--danger)' }}>{friendError}</div>}
+          </div>
         )}
 
         {/* Sidebar Nav Tabs / Scrollable Lists */}
@@ -417,8 +628,8 @@ const Chat = () => {
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{
                         fontSize: '14px',
-                        fontWeight: '500',
-                        color: isActive ? 'white' : 'var(--text-primary)',
+                        fontWeight: isActive ? '600' : '500',
+                        color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
@@ -525,33 +736,17 @@ const Chat = () => {
             </>
           )}
 
-          {/* Add Friend Form */}
-          <form onSubmit={handleSendFriendRequest} style={{
-            padding: '16px',
+          <div style={{
+            padding: '12px 16px',
             marginTop: 'auto',
-            borderTop: '1px solid var(--glass-border)',
-            background: 'rgba(0,0,0,0.1)'
+            borderTop: '1px solid var(--border-color)',
+            background: 'rgba(0, 0, 0, 0.01)',
+            textAlign: 'center',
+            fontSize: '11px',
+            color: 'var(--text-muted)'
           }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              Add Friend (User ID)
-            </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="text"
-                placeholder="User GUID..."
-                className="glass-input"
-                value={friendEmailOrId}
-                onChange={(e) => setFriendEmailOrId(e.target.value)}
-                required
-                style={{ flex: 1, padding: '6px 10px', fontSize: '13px' }}
-              />
-              <button type="submit" className="btn-premium" style={{ padding: '8px' }}>
-                <UserPlus size={16} />
-              </button>
-            </div>
-            {friendSuccess && <div style={{ fontSize: '11px', color: 'var(--success)', marginTop: '4px' }}>{friendSuccess}</div>}
-            {friendError && <div style={{ fontSize: '11px', color: 'var(--danger)', marginTop: '4px' }}>{friendError}</div>}
-          </form>
+            VeloChat v1.0.0
+          </div>
 
         </div>
       </div>
