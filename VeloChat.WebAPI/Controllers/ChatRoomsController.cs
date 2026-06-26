@@ -99,4 +99,81 @@ public class ChatRoomsController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok("Joined room successfully.");
     }
+
+    [HttpPost("dm/{friendId}")]
+    public async Task<IActionResult> GetOrCreateDirectMessageRoom(string friendId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
+
+        // 1. Check if friendship exists and is accepted
+        var friendshipExists = await _context.Friendships
+            .AnyAsync(f => ((f.UserId == userId && f.FriendId == friendId) || 
+                            (f.UserId == friendId && f.FriendId == userId)) && 
+                           f.Status == "Accepted");
+
+        if (!friendshipExists)
+        {
+            return BadRequest("You can only start direct chats with accepted friends.");
+        }
+
+        // 2. Check if a DM room already exists between these two users
+        var existingRoom = await _context.ChatRooms
+            .Where(r => !r.IsGroupChat)
+            .Where(r => r.RoomParticipants.Any(p => p.UserId == userId) && 
+                        r.RoomParticipants.Any(p => p.UserId == friendId))
+            .Select(r => new
+            {
+                r.Id,
+                RoomName = r.RoomName,
+                r.IsGroupChat,
+                r.CreatedAt,
+                Participants = r.RoomParticipants.Select(p => new
+                {
+                    p.UserId,
+                    p.User.UserName,
+                    p.User.ProfilePictureUrl,
+                    p.User.IsOnline
+                })
+            })
+            .FirstOrDefaultAsync();
+
+        if (existingRoom != null)
+        {
+            return Ok(existingRoom);
+        }
+
+        // 3. Create a new DM room
+        var friendUser = await _context.Users.FindAsync(friendId);
+        if (friendUser == null) return NotFound("Friend user not found.");
+
+        var newRoom = new ChatRoom
+        {
+            RoomName = $"{User.Identity?.Name} & {friendUser.UserName}",
+            IsGroupChat = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Add both participants
+        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = userId, JoinedAt = DateTime.UtcNow });
+        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = friendId, JoinedAt = DateTime.UtcNow });
+
+        _context.ChatRooms.Add(newRoom);
+        await _context.SaveChangesAsync();
+
+        var result = new
+        {
+            newRoom.Id,
+            newRoom.RoomName,
+            newRoom.IsGroupChat,
+            newRoom.CreatedAt,
+            Participants = new[]
+            {
+                new { UserId = userId, UserName = User.Identity?.Name, ProfilePictureUrl = (string?)null, IsOnline = true },
+                new { UserId = friendId, UserName = friendUser.UserName, ProfilePictureUrl = friendUser.ProfilePictureUrl, IsOnline = friendUser.IsOnline }
+            }
+        };
+
+        return Ok(result);
+    }
 }
