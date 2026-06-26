@@ -54,13 +54,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, email, password, profilePictureUrl) => {
+  const register = async (username, email, password, profilePictureUrl, fullName) => {
     try {
       await api.post('/api/auth/register', {
         username,
         email,
         password,
         profilePictureUrl,
+        fullName,
       });
     } catch (error) {
       throw error.response?.data || error.message;
