@@ -1,0 +1,6 @@
+@VeloChat.WebAPI_HostAddress = http://localhost:5027
+
+GET {{VeloChat.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
