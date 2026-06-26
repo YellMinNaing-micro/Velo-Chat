@@ -1,78 +1,147 @@
 # VeloChat - Real-Time Glassmorphic Messaging App
 
-VeloChat is a premium, real-time messaging application built with a high-performance **ASP.NET Core 10 Web API** backend and a responsive **React (Vite) SPA** client. 
-
-This repository is structured as a monorepo containing:
-- **`VeloChat.WebAPI`**: The backend services, utilizing MSSQL for relational data/Identity, MongoDB for chat histories, and SignalR for real-time WebSockets.
-- **`VeloChat.Client`**: The frontend React client styled with a premium light glassmorphic Slack/Telegram-inspired design system.
+VeloChat is a high-performance, real-time messaging application designed with a **monorepo architecture**. It consists of an **ASP.NET Core 10 Web API** backend and a responsive **React (Vite) SPA** client. 
 
 ---
 
-## Language / ဘာသာစကား
-- [English Version (Default)](#english-documentation)
-- [Burmese Version (မြန်မာဘာသာ)](#မြန်မာဘာသာ-မှတ်တမ်း)
+## Localization / ဘာသာစကား
+For the detailed documentation in Burmese (မြန်မာဘာသာ), please refer to:
+👉 **[README.my.md](file:///c:/repos/Velo/Velo-Chat/README.my.md)**
 
 ---
 
-## English Documentation
+## 1. System Architecture
 
-### Key Features
-- **Secure Custom JWT Auth**: Handles registrations, logins, token refresh rotations, and token revocations (Access token expires in 15 mins, sliding-window Refresh token in 7 days).
-- **Real-Time Websockets (SignalR)**: Real-time message broadcasting, typing indicators (`test_user is typing...`), and user presence (Active Now / Offline status).
-- **Dual Database Strategy**:
-  - **MSSQL**: Relational data, including users (ASP.NET Core Identity), friendship linkages (pending, accepted requests), and chat rooms.
-  - **MongoDB**: High-speed schema-less storage for historical chat message documents.
-- **Interactive OpenAPI Documentation (Scalar)**: Integrated .NET 10 OpenAPI with Scalar to provide a modern, interactive endpoint reference page.
-- **Dynamic User Search**: Add friends by typing their `Username` or `Full Name`. The UI dynamically queries the database and shows inline badges based on relationship status (`Add`, `Pending`, or `Chat`).
-- **Contrast & Legibility Fixes**: The sidebar active chat room text features high-contrast rendering for clear readability.
+VeloChat employs a dual-database strategy and web socket gateway to achieve high scalability, clean decoupling, and smooth real-time performance.
 
----
+```mermaid
+graph TD
+    Client[React Frontend] -->|HTTP REST / JWT| Auth[AuthController]
+    Client -->|HTTP REST / JWT| Friend[FriendshipsController]
+    Client -->|WebSockets / SignalR| Hub[ChatHub]
+    
+    Auth -->|EF Core / Identity| MSSQL[(MSSQL Server)]
+    Friend -->|EF Core / Relationships| MSSQL
+    Hub -->|Write Messages| MongoDB[(MongoDB)]
+    Hub -->|User Status / DM Room Init| MSSQL
+```
 
-### Tech Stack
-- **Backend**:
-  - ASP.NET Core 10 (Web API)
-  - Entity Framework Core 10 (SQL Server Provider)
-  - MongoDB C# Driver
-  - SignalR
-  - Scalar API Reference (`Scalar.AspNetCore` + .NET 10 OpenApi)
-- **Frontend**:
-  - React 19 + Vite
-  - Axios (with interceptors to auto-attach JWTs and auto-rotate expired tokens)
-  - Lucide React (premium icons)
+### Decoupled Monorepo Structure
+- **`VeloChat.WebAPI`**: Contains the API controllers, entity configurations, database migrations, token generation services, and the SignalR WebSocket hub.
+- **`VeloChat.Client`**: The frontend React workspace. It communicates with the backend REST APIs using an Axios wrapper and establishes a persistent SignalR socket for real-time traffic.
 
 ---
 
-### System Requirements
-- **.NET 10 SDK**
-- **Node.js (v18 or higher)**
-- **Microsoft SQL Server** (LocalDB or full instance running locally)
-- **MongoDB** (running on `mongodb://localhost:27017`)
+## 2. Backend Design (`VeloChat.WebAPI`)
+
+### Database Design & Schema
+VeloChat divides its data storage engines to optimize reads and writes.
+
+#### Relational Schema (MSSQL)
+EF Core maps relationships to the local SQL Server database using custom configuration in [AppDbContext.cs](file:///c:/repos/Velo/Velo-Chat/VeloChat.WebAPI/Data/AppDbContext.cs).
+1. **`AspNetUsers`** (Identity User):
+   - `Id` (GUID Primary Key)
+   - `UserName` / `NormalizedUserName`
+   - `Email` / `NormalizedEmail`
+   - `PasswordHash`
+   - `FullName` (custom string for search purposes)
+   - `ProfilePictureUrl` (custom avatar links)
+   - `IsOnline` (boolean flag toggled during login, SignalR connection, and logout/revocation)
+   - `RefreshToken` / `RefreshTokenExpiryTime` (holds token rotation keys)
+2. **`Friendships`**:
+   - `Id` (Integer PK)
+   - `UserId` (FK referencing the request sender)
+   - `FriendId` (FK referencing the request recipient)
+   - `Status` (string: `Pending` | `Accepted`)
+   - `CreatedAt` (DateTime)
+3. **`ChatRooms`**:
+   - `Id` (GUID PK)
+   - `RoomName` (string)
+   - `IsGroupChat` (boolean)
+   - `CreatedAt` (DateTime)
+4. **`RoomParticipants`** (Composite table joining Users & ChatRooms):
+   - `RoomId` (FK composite key)
+   - `UserId` (FK composite key)
+   - `JoinedAt` (DateTime)
+
+#### Document-Store Collection (MongoDB)
+MongoDB is selected for message persistence because of its high-throughput, schema-less properties.
+1. **`Messages`**:
+   - `Id` (MongoDB ObjectId)
+   - `RoomId` (string representation of `ChatRoom.Id`)
+   - `SenderId` (string representation of `ApplicationUser.Id`)
+   - `SenderName` (string cache of username to avoid repetitive queries)
+   - `Content` (string text content)
+   - `Type` (string: `text` | `image` | `file`)
+   - `MediaUrl` (optional string link to files/attachments)
+   - `Timestamp` (DateTime UTC)
 
 ---
 
-### Setup & Getting Started
+### Authentication & Token Rotation Flow
+Secure communication is maintained using Bearer JWT. Instead of default cookie cookies, we implemented a custom Access + Refresh Token flow.
 
-#### 1. Backend Setup (`VeloChat.WebAPI`)
-1. Open a terminal and navigate to the backend folder:
+1. **Registration**: 
+   - Requests hitting `POST /api/auth/register` receive a `RegisterDto` containing Username, FullName, Email, Password, and ProfilePictureUrl. Validations are executed via ASP.NET Core Identity.
+2. **Login**: 
+   - Requests hitting `POST /api/auth/login` validate credentials. Upon success, the server marks the user `IsOnline = true`, generates an **Access Token** (valid for 15 minutes) and a **Refresh Token** (cryptographically random string valid for 7 days), and updates the database with the new refresh token.
+3. **Automatic Token Rotation**:
+   - When the frontend attempts to run requests with an expired Access Token, it receives a `401 Unauthorized` response.
+   - The frontend Axios interceptor intercepts this error, halts subsequent requests, and triggers a `POST /api/auth/refresh` request sending the current `AccessToken` and `RefreshToken`.
+   - The server validates claims, checks if the refresh token in the database is not expired, issues a new `AccessToken` and `RefreshToken`, updates the database, and returns them to the client.
+4. **Revocation**:
+   - Hitting `POST /api/auth/revoke` clears the user's `RefreshToken` and `RefreshTokenExpiryTime` columns in MSSQL and sets `IsOnline = false`.
+
+---
+
+### Real-Time SignalR Gateway (`ChatHub`)
+The WebSocket connection lifecycle is managed in [ChatHub.cs](file:///c:/repos/Velo/Velo-Chat/VeloChat.WebAPI/Hubs/ChatHub.cs).
+- **Group Scoping**: When a client switches rooms, it invokes `JoinRoom(roomId)` and `LeaveRoom(roomId)` to receive messages broadcasted to that chat scope.
+- **Message Pipeline**: Sending a message calls `SendMessage(roomId, content, type, mediaUrl)`. The hub persists the message to MongoDB and broadcasts it in real-time to all clients connected to that room.
+- **Typing Indicator**: Client inputs dispatch `SendTyping(roomId, isTyping)`. The hub broadcasts the status dynamically (`ReceiveTyping`) to notify other group members.
+
+---
+
+## 3. Frontend Design (`VeloChat.Client`)
+
+### Core Client Components
+- **`AuthContext.jsx`**: A React Context provider that wraps the app, maintains auth state, and parses token payloads to obtain claims (user ID, username, email).
+- **`api.js`**: An Axios wrapper that automatically appends the `Authorization: Bearer <token>` header to all backend HTTP calls. It features a response interceptor that queues requests if a `401` is received, requests token updates, and automatically retries the queued requests with the new tokens.
+- **`Register.jsx` / `Login.jsx`**: Glassmorphic interfaces using CSS backdrop-filter styling.
+- **`Chat.jsx`**: The main page layout containing:
+  - Sidebar: Profile header, Quick-action buttons (New Chat, Add Friend toggle), Search results list, active chat rooms, active friends, and incoming friend requests.
+  - Active Conversation Window: Message thread display, live typing notifications, message bubble components with attachment overlays, and the text editor.
+
+---
+
+## 4. Setup & Running Instructions
+
+### Prerequisites
+- **.NET 10 SDK** installed.
+- **Node.js (v18+)** installed.
+- **MSSQL Server** running on `localhost`.
+- **MongoDB** running on `localhost:27017`.
+
+### Steps
+
+#### 1. Setup Database & Start Backend
+1. Navigate to the WebAPI directory:
    ```powershell
    cd VeloChat.WebAPI
    ```
-2. Verify connection strings in `appsettings.json`:
-   - **SQL Server Connection**: `Server=localhost;Database=Velo_Chat;User Id=sa;Password=Password@123;TrustServerCertificate=True` (Update credentials if your local SQL Server instance is different).
-   - **MongoDB Connection**: `mongodb://localhost:27017` with Database `VeloChat_Messages`.
-3. Apply Entity Framework migrations to build tables in MSSQL:
+2. Update the connection strings in `appsettings.json` if your local configurations differ.
+3. Apply database migrations to generate tables:
    ```powershell
    dotnet ef database update
    ```
-4. Start the Web API:
+4. Run the Web API:
    ```powershell
    dotnet run
    ```
-   The backend will start on `https://localhost:7010` (and `http://localhost:5010`).
-5. Open `https://localhost:7010/scalar/v1` in your browser to view the interactive Scalar API documentation.
+   The backend runs on `https://localhost:7010`. Access the interactive Scalar API documentation at `https://localhost:7010/scalar/v1`.
 
-#### 2. Frontend Setup (`VeloChat.Client`)
-1. Open a new terminal and navigate to the frontend client folder:
+#### 2. Start Frontend Client
+1. Open a new terminal and navigate to the client directory:
    ```powershell
    cd VeloChat.Client
    ```
@@ -80,75 +149,8 @@ This repository is structured as a monorepo containing:
    ```powershell
    npm install
    ```
-3. Start the Vite development server:
+3. Start the local Vite server:
    ```powershell
    npm run dev
    ```
-4. Open your browser and navigate to `http://localhost:5173`.
-
----
-
-## မြန်မာဘာသာ မှတ်တမ်း
-
-VeloChat သည် စွမ်းဆောင်ရည်မြင့်မားသော **ASP.NET Core 10 Web API** နှင့် လှပသပ်ရပ်သော **React (Vite)** frontend ကို အသုံးပြု၍ ဖန်တီးထားသည့် real-time စကားပြော (messaging) စနစ်ဖြစ်ပါသည်။
-
-ဤပရောဂျက်ကို အောက်ပါအတိုင်း ပိုင်းခြားတည်ဆောက်ထားပါသည် -
-- **`VeloChat.WebAPI`**: Backend ဝန်ဆောင်မှုများဖြစ်ပြီး User Identity နှင့် Friendship မော်ဒယ်များအတွက် MSSQL ကို လည်းကောင်း၊ Chat messages စာတိုများ သိမ်းဆည်းရန် MongoDB ကို လည်းကောင်း၊ Real-time ဆက်သွယ်မှုများအတွက် SignalR WebSocket ကို လည်းကောင်း အသုံးပြုထားသည်။
-- **`VeloChat.Client`**: Slack/Telegram ကဲ့သို့ သပ်ရပ်ပြီး လင်းလက်သော Light Glassmorphism ဒီဇိုင်းဖြင့် တည်ဆောက်ထားသည့် React client ဖြစ်သည်။
-
----
-
-### ထူးခြားချက်များ
-- **လုံခြုံစိတ်ချရသော JWT စနစ်**: အကောင့်ဖွင့်ခြင်း၊ Login ဝင်ခြင်း၊ Token သက်တမ်းကုန်ပါက Refresh Token ဖြင့် အလိုအလျောက် Token အသစ် လဲလှယ်ပေးခြင်း (Refresh Rotation) နှင့် Logout ပြုလုပ်ပါက token ဖျက်သိမ်းခြင်းများ ပါဝင်သည်။
-- **Real-Time စကားပြောခြင်း (SignalR)**: စာတိုများ ချက်ချင်း အပြန်အလှန် ပေးပို့နိုင်ခြင်း၊ တစ်ဖက်လူ စာရိုက်နေပါက `test_user is typing...` ဟု ပြသပေးခြင်းနှင့် User Presence Status (Active Now သို့မဟုတ် Offline ဖြစ်နေသည်ကို တိုက်ရိုက်ပြသပေးခြင်း)။
-- **Database နှစ်မျိုး ပူးတွဲအသုံးပြုခြင်း**:
-  - **MSSQL**: အသုံးပြုသူများ (ASP.NET Core Identity)၊ သူငယ်ချင်းဆက်သွယ်မှုများ (Friendships) နှင့် Chat Group များ၏ အချက်အလက်များကို သိမ်းဆည်းရန်။
-  - **MongoDB**: Chat Message အဟောင်းများနှင့် data များကို အလွန်မြန်ဆန်စွာ သိမ်းဆည်းဖတ်ရှုနိုင်ရန်။
-- **Scalar API Documentation**: API endpoint များကို ဝဘ်ဘရောက်ဇာပေါ်မှ တိုက်ရိုက် စမ်းသပ်စစ်ဆေးနိုင်ရန် ခေတ်မီလှပသော Scalar UI စာမျက်နှာကို ထည့်သွင်းပေးထားသည်။
-- **သူငယ်ချင်းများကို အလွယ်တကူ ရှာဖွေနိုင်ခြင်း**: သူငယ်ချင်းများကို ရှာဖွေရာတွင် ရှုပ်ထွေးသော User GUID များ ရိုက်ထည့်ရန်မလိုဘဲ `Username` သို့မဟုတ် `Full Name` ရိုက်ထည့်ရုံဖြင့် အလွယ်တကူ ရှာဖွေနိုင်ပါသည်။ ရှာဖွေတွေ့ရှိသူများ၏ ဘေးတွင် Friendship status ပေါ်မူတည်၍ ခလုတ်များ (Add, Pending, Chat) ကို အလိုအလျောက် ဖော်ပြပေးမည် ဖြစ်သည်။
-
----
-
-### စနစ်လည်ပတ်ရန် လိုအပ်ချက်များ
-- **.NET 10 SDK**
-- **Node.js (v18 သို့မဟုတ် ၎င်းထက်မြင့်သော version)**
-- **Microsoft SQL Server** (LocalDB သို့မဟုတ် SQL Express/Developer local instance)
-- **MongoDB** (လိပ်စာ `mongodb://localhost:27017` တွင် run ထားရန်)
-
----
-
-### စနစ်အား စတင်လည်ပတ်ပုံ (How to Run)
-
-#### ၁။ Backend စတင်ခြင်း (`VeloChat.WebAPI`)
-1. Terminal အသစ်တစ်ခု ဖွင့်ပြီး Backend folder ထဲသို့ ဝင်ပါ:
-   ```powershell
-   cd VeloChat.WebAPI
-   ```
-2. Database ချိတ်ဆက်မှု လိပ်စာများကို `appsettings.json` တွင် လိုအပ်သလို ပြင်ဆင်ပါ:
-   - **SQL Server Connection**: `Server=localhost;Database=Velo_Chat;User Id=sa;Password=Password@123;TrustServerCertificate=True`
-   - **MongoDB Connection**: `mongodb://localhost:27017`
-3. SQL Database tables များ တည်ဆောက်ရန် Migration run ပေးပါ:
-   ```powershell
-   dotnet ef database update
-   ```
-4. Backend API ကို စတင်ပါ:
-   ```powershell
-   dotnet run
-   ```
-   Backend သည် `https://localhost:7010` တွင် စတင်လည်ပတ်မည် ဖြစ်သည်။
-5. ဘရောက်ဇာတွင် `https://localhost:7010/scalar/v1` သို့ သွားရောက်ပြီး API docs များကို လေ့လာစမ်းသပ်နိုင်သည်။
-
-#### ၂။ Frontend စတင်ခြင်း (`VeloChat.Client`)
-1. Terminal အသစ်တစ်ခု ထပ်မံဖွင့်ပြီး Frontend folder ထဲသို့ ဝင်ပါ:
-   ```powershell
-   cd VeloChat.Client
-   ```
-2. Packages များ ထည့်သွင်းပါ:
-   ```powershell
-   npm install
-   ```
-3. Vite Development Server ကို စတင်ပါ:
-   ```powershell
-   npm run dev
-   ```
-4. ဘရောက်ဇာတွင် `http://localhost:5173` သို့ သွားရောက်ပြီး Chat Application အား စတင်အသုံးပြုနိုင်ပါပြီ။
+4. Open your browser to `http://localhost:5173`.
