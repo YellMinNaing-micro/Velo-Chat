@@ -1,0 +1,32 @@
+# --- .NET (C#) / Visual Studio ---
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# User-secrets
+secrets.json
+
+# --- Node / React (Vite) ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- OS / IDE Files ---
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Miscellaneous ---
+*.log
+.env
+.env.production
+.env.development
