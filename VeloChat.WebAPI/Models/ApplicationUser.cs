@@ -6,6 +6,7 @@ public class ApplicationUser : IdentityUser
 {
     // Custom Fields for Chat App
     public string? ProfilePictureUrl { get; set; }
+    public string? FullName { get; set; }
     public bool IsOnline { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
