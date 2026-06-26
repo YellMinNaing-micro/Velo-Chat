@@ -260,15 +260,15 @@ const Chat = () => {
     }}>
       {/* Sidebar (Left) */}
       <div style={{
-        borderRight: '1px solid var(--border-light)',
+        borderRight: '1px solid var(--border-color)',
         display: 'flex',
         flexDirection: 'column',
-        background: 'rgba(0, 0, 0, 0.02)'
+        background: 'var(--bg-sidebar)'
       }}>
         {/* User Profile Header */}
         <div style={{
           padding: '20px',
-          borderBottom: '1px solid var(--border-light)',
+          borderBottom: '1px solid var(--border-color)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
@@ -331,8 +331,8 @@ const Chat = () => {
         {showCreateRoom && (
           <form onSubmit={handleCreateRoom} style={{
             padding: '16px',
-            background: 'rgba(255, 255, 255, 0.02)',
-            borderBottom: '1px solid var(--glass-border)',
+            background: '#ffffff',
+            borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             flexDirection: 'column',
             gap: '12px'
@@ -392,14 +392,14 @@ const Chat = () => {
                       padding: '12px 16px',
                       borderRadius: '10px',
                       cursor: 'pointer',
-                      background: isActive ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
-                      border: isActive ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid transparent',
+                      background: isActive ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
+                      border: isActive ? '1px solid rgba(99, 102, 241, 0.15)' : '1px solid transparent',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       transition: 'all 0.2s'
                     }}
-                    onMouseEnter={(e) => { if(!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                    onMouseEnter={(e) => { if(!isActive) e.currentTarget.style.background = 'rgba(0,0,0,0.02)'; }}
                     onMouseLeave={(e) => { if(!isActive) e.currentTarget.style.background = 'transparent'; }}
                   >
                     <div style={{
@@ -563,11 +563,11 @@ const Chat = () => {
             {/* Chat Room Header */}
             <div style={{
               padding: '16px 24px',
-              borderBottom: '1px solid var(--border-light)',
+              borderBottom: '1px solid var(--border-color)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'rgba(255, 255, 255, 0.2)'
+              background: '#ffffff'
             }}>
               <div>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>{activeRoom.roomName}</h3>
@@ -585,7 +585,7 @@ const Chat = () => {
               display: 'flex',
               flexDirection: 'column',
               gap: '16px',
-              background: 'rgba(0, 0, 0, 0.15)'
+              background: 'var(--bg-chat-stream)'
             }}>
               {messages.length === 0 ? (
                 <div style={{
@@ -693,8 +693,8 @@ const Chat = () => {
             {/* Input Panel */}
             <div style={{
               padding: '16px 24px',
-              borderTop: '1px solid var(--border-light)',
-              background: 'rgba(255, 255, 255, 0.02)'
+              borderTop: '1px solid var(--border-color)',
+              background: '#ffffff'
             }}>
               <form onSubmit={handleSendMessage} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', gap: '10px' }}>
