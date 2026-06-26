@@ -46,6 +46,7 @@ public class AuthController : ControllerBase
             SecurityStamp = Guid.NewGuid().ToString(),
             UserName = model.Username,
             ProfilePictureUrl = model.ProfilePictureUrl,
+            FullName = model.FullName,
             CreatedAt = DateTime.UtcNow,
             IsOnline = false
         };
