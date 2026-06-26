@@ -31,6 +31,13 @@ const Chat = () => {
 
   const hubConnectionRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const activeRoomRef = useRef(null);
+  const prevRoomIdRef = useRef(null);
+
+  // Keep activeRoomRef updated to prevent stale closures
+  useEffect(() => {
+    activeRoomRef.current = activeRoom;
+  }, [activeRoom]);
 
   // 1. Fetch Rooms & Friends
   const fetchData = async () => {
@@ -66,7 +73,7 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 2. Establish SignalR Hub Connection
+  // 2. Establish SignalR Hub Connection (Once on mount)
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) return;
@@ -80,7 +87,7 @@ const Chat = () => {
 
     connection.on('ReceiveMessage', (message) => {
       // If message belongs to active room, append to state
-      if (activeRoom && message.roomId === activeRoom.id) {
+      if (activeRoomRef.current && message.roomId === activeRoomRef.current.id) {
         setMessages((prev) => [...prev, message]);
       }
     });
@@ -101,9 +108,13 @@ const Chat = () => {
         console.log('Connected to SignalR Hub successfully!');
         hubConnectionRef.current = connection;
         
-        // If there's an active room already, join it
-        if (activeRoom) {
-          connection.invoke('JoinRoom', activeRoom.id);
+        // If there's an active room already on connect, join it
+        if (activeRoomRef.current) {
+          connection.invoke('JoinRoom', activeRoomRef.current.id)
+            .then(() => {
+              prevRoomIdRef.current = activeRoomRef.current.id;
+            })
+            .catch(err => console.warn('Failed to join room group on connect:', err));
         }
       })
       .catch((err) => console.error('SignalR Hub Connection Error:', err));
@@ -113,19 +124,30 @@ const Chat = () => {
         connection.stop();
       }
     };
+  }, []);
+
+  // 3. Handle Active Room Switching in SignalR Hub Group
+  useEffect(() => {
+    if (!hubConnectionRef.current || hubConnectionRef.current.state !== 'Connected') return;
+
+    const switchHubGroups = async () => {
+      try {
+        if (prevRoomIdRef.current) {
+          await hubConnectionRef.current.invoke('LeaveRoom', prevRoomIdRef.current);
+        }
+        if (activeRoom?.id) {
+          await hubConnectionRef.current.invoke('JoinRoom', activeRoom.id);
+          prevRoomIdRef.current = activeRoom.id;
+        }
+      } catch (err) {
+        console.warn('Error switching hub groups:', err);
+      }
+    };
+
+    switchHubGroups();
   }, [activeRoom?.id]);
 
-  // 3. Handle Active Room Switching
   const handleRoomSelect = async (room) => {
-    if (activeRoom && hubConnectionRef.current) {
-      // Leave old room group
-      try {
-        await hubConnectionRef.current.invoke('LeaveRoom', activeRoom.id);
-      } catch (e) {
-        console.warn('Failed to leave previous hub room group:', e);
-      }
-    }
-
     setActiveRoom(room);
     setMessages([]);
 
@@ -133,11 +155,6 @@ const Chat = () => {
       // Load historical messages from MongoDB
       const response = await api.get(`/api/messages/room/${room.id}`);
       setMessages(response.data);
-
-      if (hubConnectionRef.current) {
-        // Join new room group
-        await hubConnectionRef.current.invoke('JoinRoom', room.id);
-      }
     } catch (err) {
       console.error('Error switching room:', err);
     }
