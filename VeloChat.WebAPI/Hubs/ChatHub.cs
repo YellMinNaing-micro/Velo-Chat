@@ -32,10 +32,10 @@ public class ChatHub : Hub
 
     public async Task SendMessage(string roomId, string content, string messageType, string? mediaUrl)
     {
-        var senderId = Context.UserIdentifier;
-        var senderName = Context.User?.Identity?.Name ?? "Unknown";
+        string? senderId = Context.UserIdentifier;
+        string senderName = Context.User?.Identity?.Name ?? "Unknown";
 
-        var message = new Message
+        Message message = new Message
         {
             RoomId = roomId,
             SenderId = senderId ?? "Unknown",
@@ -58,8 +58,8 @@ public class ChatHub : Hub
 
     public async Task SendTyping(string roomId, bool isTyping)
     {
-        var senderId = Context.UserIdentifier;
-        var senderName = Context.User?.Identity?.Name ?? "Unknown";
+        string? senderId = Context.UserIdentifier;
+        string? senderName = Context.User?.Identity?.Name ?? "Unknown";
         await Clients.Group(roomId).SendAsync("UserTyping", new { roomId, userId = senderId, username = senderName, isTyping });
     }
 }
