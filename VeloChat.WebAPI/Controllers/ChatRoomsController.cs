@@ -32,13 +32,13 @@ public class ChatRoomsController : ControllerBase
         {
             RoomName = isGroupChat ? roomName : "Direct Message",
             IsGroupChat = isGroupChat,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         room.RoomParticipants.Add(new RoomParticipant
         {
             UserId = userId,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTime.Now
         });
 
         _context.ChatRooms.Add(room);
@@ -93,7 +93,7 @@ public class ChatRoomsController : ControllerBase
         room.RoomParticipants.Add(new RoomParticipant
         {
             UserId = userId,
-            JoinedAt = DateTime.UtcNow
+            JoinedAt = DateTime.Now
         });
 
         await _context.SaveChangesAsync();
@@ -151,12 +151,12 @@ public class ChatRoomsController : ControllerBase
         {
             RoomName = $"{User.Identity?.Name} & {friendUser.UserName}",
             IsGroupChat = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
 
         // Add both participants
-        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = userId, JoinedAt = DateTime.UtcNow });
-        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = friendId, JoinedAt = DateTime.UtcNow });
+        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = userId, JoinedAt = DateTime.Now });
+        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = friendId, JoinedAt = DateTime.Now });
 
         _context.ChatRooms.Add(newRoom);
         await _context.SaveChangesAsync();
