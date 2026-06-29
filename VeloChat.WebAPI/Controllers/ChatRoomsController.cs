@@ -25,10 +25,10 @@ public class ChatRoomsController : ControllerBase
     [HttpPost("create")]
     public async Task<IActionResult> CreateRoom([FromQuery] string? roomName, [FromQuery] bool isGroupChat)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
-        var room = new ChatRoom
+        ChatRoom room = new ChatRoom
         {
             RoomName = isGroupChat ? roomName : "Direct Message",
             IsGroupChat = isGroupChat,
@@ -50,7 +50,7 @@ public class ChatRoomsController : ControllerBase
     [HttpGet("my-rooms")]
     public async Task<IActionResult> GetMyRooms()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
         var rooms = await _context.RoomParticipants
@@ -78,7 +78,7 @@ public class ChatRoomsController : ControllerBase
     [HttpPost("{roomId}/join")]
     public async Task<IActionResult> JoinRoom(Guid roomId)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
         var room = await _context.ChatRooms
@@ -103,11 +103,11 @@ public class ChatRoomsController : ControllerBase
     [HttpPost("dm/{friendId}")]
     public async Task<IActionResult> GetOrCreateDirectMessageRoom(string friendId)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
         // 1. Check if friendship exists and is accepted
-        var friendshipExists = await _context.Friendships
+        bool friendshipExists = await _context.Friendships
             .AnyAsync(f => ((f.UserId == userId && f.FriendId == friendId) || 
                             (f.UserId == friendId && f.FriendId == userId)) && 
                            f.Status == "Accepted");
@@ -125,7 +125,7 @@ public class ChatRoomsController : ControllerBase
             .Select(r => new
             {
                 r.Id,
-                RoomName = r.RoomName,
+                r.RoomName,
                 r.IsGroupChat,
                 r.CreatedAt,
                 Participants = r.RoomParticipants.Select(p => new
@@ -144,10 +144,10 @@ public class ChatRoomsController : ControllerBase
         }
 
         // 3. Create a new DM room
-        var friendUser = await _context.Users.FindAsync(friendId);
+        ApplicationUser? friendUser = await _context.Users.FindAsync(friendId);
         if (friendUser == null) return NotFound("Friend user not found.");
 
-        var newRoom = new ChatRoom
+        ChatRoom newRoom = new ChatRoom
         {
             RoomName = $"{User.Identity?.Name} & {friendUser.UserName}",
             IsGroupChat = false,
@@ -170,7 +170,7 @@ public class ChatRoomsController : ControllerBase
             Participants = new[]
             {
                 new { UserId = userId, UserName = User.Identity?.Name, ProfilePictureUrl = (string?)null, IsOnline = true },
-                new { UserId = friendId, UserName = friendUser.UserName, ProfilePictureUrl = friendUser.ProfilePictureUrl, IsOnline = friendUser.IsOnline }
+                new { UserId = friendId, friendUser.UserName, friendUser.ProfilePictureUrl, friendUser.IsOnline }
             }
         };
 
