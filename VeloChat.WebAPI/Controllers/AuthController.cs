@@ -32,7 +32,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto model)
     {
-        var userExists = await _userManager.FindByEmailAsync(model.Email);
+        ApplicationUser? userExists = await _userManager.FindByEmailAsync(model.Email);
         if (userExists != null)
             return BadRequest("User already exists with this email.");
 
@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
         if (userExists != null)
             return BadRequest("Username is already taken.");
 
-        var user = new ApplicationUser
+        ApplicationUser user = new ApplicationUser
         {
             Email = model.Email,
             SecurityStamp = Guid.NewGuid().ToString(),
@@ -51,7 +51,7 @@ public class AuthController : ControllerBase
             IsOnline = false
         };
 
-        var result = await _userManager.CreateAsync(user, model.Password);
+        IdentityResult result = await _userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded)
         {
             foreach (var error in result.Errors)
@@ -67,17 +67,17 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto model)
     {
-        var user = await _userManager.FindByEmailAsync(model.Email) ?? await _userManager.FindByNameAsync(model.Email);
+        ApplicationUser? user = await _userManager.FindByEmailAsync(model.Email) ?? await _userManager.FindByNameAsync(model.Email);
         if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
         {
             return Unauthorized("Invalid credentials.");
         }
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var accessToken = _tokenService.GenerateAccessToken(user, roles);
-        var refreshToken = _tokenService.GenerateRefreshToken();
+        IList<string> roles = await _userManager.GetRolesAsync(user);
+        string accessToken = _tokenService.GenerateAccessToken(user, roles);
+        string refreshToken = _tokenService.GenerateRefreshToken();
 
-        var refreshTokenDurationDays = double.Parse(_config["Jwt:RefreshTokenDurationDays"] ?? "7");
+        double refreshTokenDurationDays = double.Parse(_config["Jwt:RefreshTokenDurationDays"] ?? "7");
         user.RefreshToken = refreshToken;
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenDurationDays);
         user.IsOnline = true; // Mark as online upon login
@@ -90,29 +90,29 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] TokenDto model)
     {
-        var principal = _tokenService.GetPrincipalFromExpiredToken(model.AccessToken);
+        ClaimsPrincipal? principal = _tokenService.GetPrincipalFromExpiredToken(model.AccessToken);
         if (principal == null)
         {
             return BadRequest("Invalid access token.");
         }
 
-        var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
         {
             return BadRequest("Invalid claims inside token.");
         }
 
-        var user = await _userManager.FindByIdAsync(userId);
+        ApplicationUser? user = await _userManager.FindByIdAsync(userId);
         if (user == null || user.RefreshToken != model.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
         {
             return BadRequest("Invalid or expired refresh token.");
         }
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var newAccessToken = _tokenService.GenerateAccessToken(user, roles);
-        var newRefreshToken = _tokenService.GenerateRefreshToken();
+        IList<string> roles = await _userManager.GetRolesAsync(user);
+        string newAccessToken = _tokenService.GenerateAccessToken(user, roles);
+        string newRefreshToken = _tokenService.GenerateRefreshToken();
 
-        var refreshTokenDurationDays = double.Parse(_config["Jwt:RefreshTokenDurationDays"] ?? "7");
+        double refreshTokenDurationDays = double.Parse(_config["Jwt:RefreshTokenDurationDays"] ?? "7");
         user.RefreshToken = newRefreshToken;
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenDurationDays);
         await _userManager.UpdateAsync(user);
@@ -124,13 +124,13 @@ public class AuthController : ControllerBase
     [HttpPost("revoke")]
     public async Task<IActionResult> Revoke()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId))
         {
             return BadRequest("Invalid user identity.");
         }
 
-        var user = await _userManager.FindByIdAsync(userId);
+        ApplicationUser? user = await _userManager.FindByIdAsync(userId);
         if (user == null) return NotFound("User not found.");
 
         user.RefreshToken = null;
