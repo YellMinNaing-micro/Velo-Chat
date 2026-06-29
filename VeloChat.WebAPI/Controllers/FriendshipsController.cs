@@ -25,15 +25,15 @@ public class FriendshipsController : ControllerBase
     [HttpPost("request/{friendId}")]
     public async Task<IActionResult> SendFriendRequest(string friendId)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
         if (userId == friendId) return BadRequest("You cannot add yourself as a friend.");
 
-        var friendExists = await _context.Users.AnyAsync(u => u.Id == friendId);
+        bool friendExists = await _context.Users.AnyAsync(u => u.Id == friendId);
         if (!friendExists) return NotFound("User not found.");
 
-        var existingFriendship = await _context.Friendships
+        Friendship? existingFriendship = await _context.Friendships
             .FirstOrDefaultAsync(f => (f.UserId == userId && f.FriendId == friendId) || 
                                       (f.UserId == friendId && f.FriendId == userId));
 
@@ -42,7 +42,7 @@ public class FriendshipsController : ControllerBase
             return BadRequest($"Friendship already exists. Status: {existingFriendship.Status}");
         }
 
-        var friendship = new Friendship
+        Friendship friendship = new Friendship
         {
             UserId = userId,
             FriendId = friendId,
@@ -59,10 +59,10 @@ public class FriendshipsController : ControllerBase
     [HttpPost("accept/{friendId}")]
     public async Task<IActionResult> AcceptFriendRequest(string friendId)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
-        var friendship = await _context.Friendships
+        Friendship? friendship = await _context.Friendships
             .FirstOrDefaultAsync(f => f.UserId == friendId && f.FriendId == userId && f.Status == "Pending");
 
         if (friendship == null)
@@ -79,7 +79,7 @@ public class FriendshipsController : ControllerBase
     [HttpGet("list")]
     public async Task<IActionResult> GetFriends()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
         var friends = await _context.Friendships
@@ -100,7 +100,7 @@ public class FriendshipsController : ControllerBase
     [HttpGet("pending")]
     public async Task<IActionResult> GetPendingRequests()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
         var incoming = await _context.Friendships
@@ -139,10 +139,13 @@ public class FriendshipsController : ControllerBase
     [HttpGet("search")]
     public async Task<IActionResult> SearchUsers([FromQuery] string query)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
 
-        if (string.IsNullOrWhiteSpace(query)) return Ok(new System.Collections.Generic.List<object>());
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return Ok(value: new List<object>());
+        }
 
         var users = await _context.Users
             .Where(u => u.Id != userId)
