@@ -22,7 +22,7 @@ public class MessagesController : ControllerBase
     [HttpGet("room/{roomId}")]
     public async Task<ActionResult<List<Message>>> GetMessages(string roomId)
     {
-        var messages = await _messageCollection
+        List<Message> messages = await _messageCollection
             .Find(m => m.RoomId == roomId)
             .SortBy(m => m.Timestamp)
             .Limit(100)
