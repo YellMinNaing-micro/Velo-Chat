@@ -6,8 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
 import { BrandLogo } from '@/components/brand-logo';
-import { colors } from '@/constants/colors';
+import type { ThemeColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
+import { useAppTheme } from '@/context/theme-context';
 import { api } from '@/services/api';
 import type { ChatMessage, ChatRoom, Friend, Participant } from '@/types/api';
 
@@ -22,6 +23,8 @@ function relativeTime(value?: string) {
 }
 
 export default function ChatsScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const { user } = useAuth();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -97,7 +100,7 @@ export default function ChatsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: { backgroundColor: colors.surface, flex: 1 }, header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 10 },
   add: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 13, height: 44, justifyContent: 'center', width: 44 },
   list: { paddingBottom: 28 }, eyebrow: { color: colors.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 0.8, paddingHorizontal: 20 },
