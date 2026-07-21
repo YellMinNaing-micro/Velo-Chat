@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -6,7 +7,7 @@ import Chat from './components/Chat';
 
 const MainApp = () => {
   const { user, loading } = useAuth();
-  const [view, setView] = useState('login'); // 'login' | 'register'
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -36,18 +37,30 @@ const MainApp = () => {
     );
   }
 
-  if (user) {
-    return <Chat />;
-  }
-
   return (
-    <>
-      {view === 'login' ? (
-        <Login onNavigateToRegister={() => setView('register')} />
-      ) : (
-        <Register onNavigateToLogin={() => setView('login')} />
-      )}
-    </>
+    <Routes>
+      <Route
+        path="/"
+        element={user ? <Chat /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/login"
+        element={
+          user
+            ? <Navigate to="/" replace />
+            : <Login onNavigateToRegister={() => navigate('/register')} />
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          user
+            ? <Navigate to="/" replace />
+            : <Register onNavigateToLogin={() => navigate('/login')} />
+        }
+      />
+      <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
+    </Routes>
   );
 };
 
