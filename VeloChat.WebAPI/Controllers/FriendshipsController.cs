@@ -13,6 +13,7 @@ namespace VeloChat.WebAPI.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
+[Tags("Friendships")]
 public class FriendshipsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -23,6 +24,8 @@ public class FriendshipsController : ControllerBase
     }
 
     [HttpPost("request/{friendId}")]
+    [EndpointSummary("Send a friend request")]
+    [EndpointDescription("Creates a pending friend request from the authenticated user to the specified user.")]
     public async Task<IActionResult> SendFriendRequest(string friendId)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -57,6 +60,8 @@ public class FriendshipsController : ControllerBase
     }
 
     [HttpPost("accept/{friendId}")]
+    [EndpointSummary("Accept a friend request")]
+    [EndpointDescription("Accepts a pending friend request sent by the specified user to the authenticated user.")]
     public async Task<IActionResult> AcceptFriendRequest(string friendId)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -77,6 +82,8 @@ public class FriendshipsController : ControllerBase
     }
 
     [HttpGet("list")]
+    [EndpointSummary("List accepted friends")]
+    [EndpointDescription("Returns the authenticated user's accepted friends with profile and online-status details.")]
     public async Task<IActionResult> GetFriends()
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -98,6 +105,8 @@ public class FriendshipsController : ControllerBase
     }
 
     [HttpGet("pending")]
+    [EndpointSummary("List pending friend requests")]
+    [EndpointDescription("Returns both incoming and outgoing pending friend requests for the authenticated user.")]
     public async Task<IActionResult> GetPendingRequests()
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -137,6 +146,8 @@ public class FriendshipsController : ControllerBase
     }
 
     [HttpGet("search")]
+    [EndpointSummary("Search for users")]
+    [EndpointDescription("Searches users by username, full name, or email and includes their friendship status with the authenticated user.")]
     public async Task<IActionResult> SearchUsers([FromQuery] string query)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
