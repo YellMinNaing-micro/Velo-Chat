@@ -149,4 +149,95 @@ public class AuthController : ControllerBase
 
         return Ok("Token revoked and user status set to offline.");
     }
+
+    [Authorize]
+    [HttpGet("me")]
+    [EndpointSummary("Get the current user's profile")]
+    [EndpointDescription("Returns the authenticated user's account and profile information.")]
+    public async Task<ActionResult<UserProfileDto>> GetProfile()
+    {
+        ApplicationUser? user = await _userManager.GetUserAsync(User);
+        if (user == null) return NotFound("User not found.");
+
+        return Ok(ToProfileDto(user));
+    }
+
+    [Authorize]
+    [HttpPut("me")]
+    [EndpointSummary("Update the current user's profile")]
+    [EndpointDescription("Updates the authenticated user's username, email, full name, and profile picture URL.")]
+    public async Task<ActionResult<UserProfileDto>> UpdateProfile([FromBody] UpdateProfileDto model)
+    {
+        ApplicationUser? user = await _userManager.GetUserAsync(User);
+        if (user == null) return NotFound("User not found.");
+
+        string username = model.Username.Trim();
+        string email = model.Email.Trim();
+
+        if (string.IsNullOrWhiteSpace(username))
+            ModelState.AddModelError(nameof(model.Username), "Username is required.");
+        if (string.IsNullOrWhiteSpace(email))
+            ModelState.AddModelError(nameof(model.Email), "Email is required.");
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        ApplicationUser? usernameOwner = await _userManager.FindByNameAsync(username);
+        if (usernameOwner != null && usernameOwner.Id != user.Id)
+        {
+            ModelState.AddModelError(nameof(model.Username), "Username is already taken.");
+        }
+
+        ApplicationUser? emailOwner = await _userManager.FindByEmailAsync(email);
+        if (emailOwner != null && emailOwner.Id != user.Id)
+        {
+            ModelState.AddModelError(nameof(model.Email), "Email is already in use.");
+        }
+
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        user.UserName = username;
+        user.NormalizedUserName = _userManager.NormalizeName(user.UserName);
+        user.Email = email;
+        user.NormalizedEmail = _userManager.NormalizeEmail(user.Email);
+        user.FullName = string.IsNullOrWhiteSpace(model.FullName) ? null : model.FullName.Trim();
+        user.ProfilePictureUrl = string.IsNullOrWhiteSpace(model.ProfilePictureUrl) ? null : model.ProfilePictureUrl.Trim();
+
+        IdentityResult result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (IdentityError error in result.Errors)
+            {
+                ModelState.AddModelError(error.Code, error.Description);
+            }
+
+            return ValidationProblem(ModelState);
+        }
+
+        return Ok(ToProfileDto(user));
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    [EndpointSummary("Change the current user's password")]
+    [EndpointDescription("Verifies the user's old password before replacing it with a new password that satisfies the configured password policy.")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto model)
+    {
+        ApplicationUser? user = await _userManager.GetUserAsync(User);
+        if (user == null) return NotFound("User not found.");
+
+        IdentityResult result = await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
+        if (!result.Succeeded)
+        {
+            foreach (IdentityError error in result.Errors)
+            {
+                ModelState.AddModelError(error.Code, error.Description);
+            }
+
+            return ValidationProblem(ModelState);
+        }
+
+        return Ok(new { Message = "Password changed successfully." });
+    }
+
+    private static UserProfileDto ToProfileDto(ApplicationUser user) =>
+        new(user.Id, user.UserName ?? string.Empty, user.Email ?? string.Empty, user.FullName, user.ProfilePictureUrl);
 }
