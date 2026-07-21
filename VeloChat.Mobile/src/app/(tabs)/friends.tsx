@@ -54,7 +54,7 @@ export default function FriendsScreen() {
   };
   const chat = async (friend: Friend) => {
     const response = await api.post<ChatRoom>(`/api/chatrooms/dm/${friend.id}`);
-    router.push({ pathname: '/chat/[id]', params: { id: response.data.id, name: friend.userName, avatar: friend.profilePictureUrl || '' } });
+    router.push({ pathname: '/chat/[id]', params: { id: response.data.id, name: friend.userName, avatar: friend.profilePictureUrl || '', friendId: friend.id } });
   };
   const openProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } });
 
