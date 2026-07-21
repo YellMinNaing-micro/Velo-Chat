@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -61,6 +62,7 @@ export default function ProfileScreen() {
   const confirmLogout = () => Alert.alert('Log out?', 'You will need to sign in again on this device.', [
     { text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: logout },
   ]);
+  const profileGradient = mode === 'dark' ? ['#50372F', '#251D1A', colors.surface] as const : ['#FFE8DA', '#FFF3EC', colors.surface] as const;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
@@ -71,7 +73,11 @@ export default function ProfileScreen() {
             <Pressable onPress={confirmLogout} style={styles.logout}><Ionicons color={colors.danger} name="log-out-outline" size={20} /><Text style={styles.logoutText}>Log out</Text></Pressable>
           </View>
 
-          <View style={styles.card}><Avatar imageUrl={user?.profilePictureUrl} name={user?.fullName || user?.username} online size={82} /><View style={styles.identity}><Text style={styles.displayName}>{user?.fullName || user?.username}</Text><Text style={styles.handle}>@{user?.username}</Text><Text style={styles.email}>{user?.email}</Text></View></View>
+          <LinearGradient colors={profileGradient} style={styles.card}>
+            <View style={styles.avatarRing}><Avatar imageUrl={user?.profilePictureUrl} name={user?.fullName || user?.username} online size={92} /></View>
+            <View style={styles.identity}><Text style={styles.displayName}>{user?.fullName || user?.username}</Text><Text style={styles.handle}>@{user?.username}</Text><Text style={styles.email}>{user?.email}</Text></View>
+            <View style={styles.stats}><View style={styles.stat}><Text style={styles.statLabel}>STATUS</Text><Text style={styles.statValue}>● Active</Text></View><View style={styles.statDivider} /><View style={styles.stat}><Text style={styles.statLabel}>THEME</Text><Text style={styles.statValue}>{mode === 'dark' ? 'Dark' : 'Light'}</Text></View><View style={styles.statDivider} /><View style={styles.stat}><Text style={styles.statLabel}>ACCOUNT</Text><Text numberOfLines={1} style={styles.statValue}>Velo</Text></View></View>
+          </LinearGradient>
           {!!message && <Text style={styles.notice}>{message}</Text>}
 
           {panel === 'view' && <View style={styles.sections}>
@@ -109,7 +115,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: { backgroundColor: colors.surface, flex: 1 }, flex: { flex: 1 }, content: { padding: 20, paddingBottom: 42 },
   heading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 42 }, title: { color: colors.text, fontSize: 31, fontWeight: '900', letterSpacing: -1 }, back: { alignItems: 'center', flexDirection: 'row', gap: 3 }, backText: { color: colors.text, fontSize: 17, fontWeight: '800' },
   logout: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderRadius: 11, flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 9 }, logoutText: { color: colors.danger, fontSize: 12, fontWeight: '800' },
-  card: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 22, flexDirection: 'row', gap: 18, marginVertical: 24, padding: 20 }, identity: { flex: 1, gap: 4 }, displayName: { color: colors.text, fontSize: 21, fontWeight: '900' }, handle: { color: colors.primaryDark, fontSize: 13, fontWeight: '700' }, email: { color: colors.textMuted, fontSize: 12 },
+  card: { alignItems: 'center', borderColor: colors.border, borderRadius: 28, borderWidth: 1, gap: 11, marginVertical: 22, overflow: 'hidden', paddingHorizontal: 18, paddingTop: 25 }, avatarRing: { borderColor: `${colors.surface}CC`, borderRadius: 52, borderWidth: 4, padding: 2 }, identity: { alignItems: 'center', gap: 4 }, displayName: { color: colors.text, fontSize: 23, fontWeight: '900' }, handle: { color: colors.primaryDark, fontSize: 13, fontWeight: '700' }, email: { color: colors.textMuted, fontSize: 12 }, stats: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: `${colors.surface}B8`, borderRadius: 16, flexDirection: 'row', marginBottom: 18, marginTop: 8, paddingVertical: 13 }, stat: { alignItems: 'center', flex: 1, gap: 4 }, statLabel: { color: colors.textMuted, fontSize: 8, fontWeight: '800', letterSpacing: 0.7 }, statValue: { color: colors.text, fontSize: 12, fontWeight: '800', maxWidth: 76 }, statDivider: { backgroundColor: colors.border, height: 26, width: 1 },
   notice: { backgroundColor: colors.primarySoft, borderRadius: 11, color: colors.primaryDark, fontSize: 13, marginBottom: 16, padding: 12 }, sections: { gap: 10 }, sectionLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 0.9, marginBottom: 2 }, appearanceLabel: { marginTop: 14 },
   menuRow: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 16, flexDirection: 'row', gap: 13, padding: 15 }, pressed: { opacity: 0.75 }, menuIcon: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 12, height: 42, justifyContent: 'center', width: 42 }, menuCopy: { flex: 1, gap: 3 }, menuTitle: { color: colors.text, fontSize: 15, fontWeight: '800' }, menuDescription: { color: colors.textMuted, fontSize: 11, lineHeight: 16 },
   themeCard: { backgroundColor: colors.surfaceMuted, borderRadius: 16, gap: 14, padding: 15 }, themeHeading: { alignItems: 'center', flexDirection: 'row', gap: 13 }, segment: { backgroundColor: colors.background, borderRadius: 12, flexDirection: 'row', padding: 4 }, segmentButton: { alignItems: 'center', borderRadius: 9, flex: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', paddingVertical: 10 }, segmentActive: { backgroundColor: colors.primary }, segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: '800' }, segmentTextActive: { color: '#FFFFFF' },
