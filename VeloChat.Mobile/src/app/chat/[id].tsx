@@ -83,7 +83,7 @@ export default function ConversationScreen() {
       await connection.invoke('SendMessage', params.id, content, 'text', null);
     } catch (err) { setText(content); setError(getApiError(err, 'Message was not sent.')); }
   };
-  const chatGradient = mode === 'dark' ? ['#4A352E', '#241C19', colors.background] as const : ['#FFF0E6', '#FAF4F0', colors.background] as const;
+  const chatGradient = mode === 'dark' ? ['#173A36', '#142522', colors.background] as const : ['#E2F5F1', '#F1F8F6', colors.background] as const;
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
