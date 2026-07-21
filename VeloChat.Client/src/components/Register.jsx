@@ -47,8 +47,9 @@ const Register = ({ onNavigateToLogin }) => {
       gap: '24px'
     }}>
       <div style={{ textAlign: 'center' }}>
+        <div className="auth-brand"><img src="/velo-logo.svg" alt="" /><span>Velo Chat</span></div>
         <h2 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>Create Account</h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Join VeloChat and start chatting instantly</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Join Velo Chat and start chatting instantly</p>
       </div>
 
       {success && (
