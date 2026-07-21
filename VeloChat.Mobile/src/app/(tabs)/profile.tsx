@@ -62,7 +62,7 @@ export default function ProfileScreen() {
   const confirmLogout = () => Alert.alert('Log out?', 'You will need to sign in again on this device.', [
     { text: 'Cancel', style: 'cancel' }, { text: 'Log out', style: 'destructive', onPress: logout },
   ]);
-  const profileGradient = mode === 'dark' ? ['#50372F', '#251D1A', colors.surface] as const : ['#FFE8DA', '#FFF3EC', colors.surface] as const;
+  const profileGradient = mode === 'dark' ? ['#1A403B', '#172724', colors.surface] as const : ['#D9F3EE', '#F0F8F6', colors.surface] as const;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
