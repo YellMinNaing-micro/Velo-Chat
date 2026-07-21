@@ -1,6 +1,7 @@
 import { Image, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { colors } from '@/constants/colors';
+import type { ThemeColors } from '@/constants/colors';
+import { useAppTheme } from '@/context/theme-context';
 
 type Props = {
   name?: string | null;
@@ -11,6 +12,8 @@ type Props = {
 };
 
 export function Avatar({ name, imageUrl, size = 48, online, style }: Props) {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const initials = (name || 'Velo').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
   return (
     <View style={[{ height: size, width: size }, style]}>
@@ -24,8 +27,8 @@ export function Avatar({ name, imageUrl, size = 48, online, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   avatar: { alignItems: 'center', backgroundColor: colors.primarySoft, justifyContent: 'center', overflow: 'hidden' },
   initials: { color: colors.primaryDark, fontWeight: '800' },
-  online: { backgroundColor: colors.success, borderColor: '#FFFFFF', borderRadius: 99, borderWidth: 2, bottom: 0, position: 'absolute', right: 0 },
+  online: { backgroundColor: colors.success, borderColor: colors.surface, borderRadius: 99, borderWidth: 2, bottom: 0, position: 'absolute', right: 0 },
 });
