@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -81,8 +81,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = useCallback((profile) => {
+    setUser((currentUser) => {
+      const updatedUser = { ...currentUser, ...profile };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    const response = await api.get('/api/auth/me');
+    updateUser(response.data);
+    return response.data;
+  }, [updateUser]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
