@@ -96,12 +96,39 @@ public class FriendshipsController : ControllerBase
             {
                 u.Id,
                 u.UserName,
+                u.FullName,
                 u.ProfilePictureUrl,
                 u.IsOnline
             })
             .ToListAsync();
 
         return Ok(friends);
+    }
+
+    [HttpGet("profile/{friendId}")]
+    [EndpointSummary("Get an accepted friend's profile")]
+    [EndpointDescription("Returns public profile information for a user who has an accepted friendship with the authenticated user.")]
+    public async Task<IActionResult> GetFriendProfile(string friendId)
+    {
+        string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
+
+        var profile = await _context.Friendships
+            .Where(f => ((f.UserId == userId && f.FriendId == friendId) ||
+                         (f.UserId == friendId && f.FriendId == userId)) &&
+                        f.Status == "Accepted")
+            .Select(f => new
+            {
+                Id = friendId,
+                UserName = f.UserId == friendId ? f.User.UserName : f.Friend.UserName,
+                FullName = f.UserId == friendId ? f.User.FullName : f.Friend.FullName,
+                ProfilePictureUrl = f.UserId == friendId ? f.User.ProfilePictureUrl : f.Friend.ProfilePictureUrl,
+                IsOnline = f.UserId == friendId ? f.User.IsOnline : f.Friend.IsOnline,
+                FriendsSince = f.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        return profile == null ? NotFound("Accepted friend profile not found.") : Ok(profile);
     }
 
     [HttpGet("pending")]
