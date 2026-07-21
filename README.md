@@ -1,5 +1,7 @@
 # VeloChat - Real-Time Glassmorphic Messaging App
 
+An Expo React Native client is available in [`VeloChat.Mobile`](./VeloChat.Mobile). See its README for emulator/device API configuration and run commands.
+
 VeloChat is a high-performance, real-time messaging application designed with a **monorepo architecture**. It consists of an **ASP.NET Core 10 Web API** backend and a responsive **React (Vite) SPA** client. 
 
 ---
