@@ -17,7 +17,7 @@ import type { ChatMessage } from '@/types/api';
 export default function ConversationScreen() {
   const { colors, mode } = useAppTheme();
   const styles = createStyles(colors);
-  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string }>();
+  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string; friendId?: string }>();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
@@ -89,8 +89,7 @@ export default function ConversationScreen() {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons color={colors.text} name="chevron-back" size={24} /></Pressable>
-        <Avatar imageUrl={params.avatar} name={params.name} online={status === 'Online'} size={42} />
-        <View style={styles.headerText}><Text numberOfLines={1} style={styles.name}>{params.name || 'Conversation'}</Text><Text style={styles.status}>{typingName ? `${typingName} is typing…` : status}</Text></View>
+        <Pressable disabled={!params.friendId} onPress={() => router.push({ pathname: '/friend/[id]', params: { id: params.friendId!, name: params.name || '', avatar: params.avatar || '' } })} style={styles.profileHeader}><Avatar imageUrl={params.avatar} name={params.name} online={status === 'Online'} size={42} /><View style={styles.headerText}><Text numberOfLines={1} style={styles.name}>{params.name || 'Conversation'}</Text><Text style={styles.status}>{typingName ? `${typingName} is typing…` : status}</Text></View></Pressable>
         <Pressable style={styles.more}><Ionicons color={colors.textMuted} name="ellipsis-horizontal" size={23} /></Pressable>
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0} style={styles.flex}>
@@ -114,7 +113,7 @@ export default function ConversationScreen() {
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  safe: { backgroundColor: colors.surface, flex: 1 }, flex: { flex: 1 }, header: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: 10, minHeight: 68, paddingHorizontal: 12 }, back: { alignItems: 'center', height: 42, justifyContent: 'center', width: 34 }, headerText: { flex: 1, gap: 2 }, name: { color: colors.text, fontSize: 16, fontWeight: '800' }, status: { color: colors.primaryDark, fontSize: 11 }, more: { padding: 8 },
+  safe: { backgroundColor: colors.surface, flex: 1 }, flex: { flex: 1 }, header: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: 10, minHeight: 68, paddingHorizontal: 12 }, back: { alignItems: 'center', height: 42, justifyContent: 'center', width: 34 }, profileHeader: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 10 }, headerText: { flex: 1, gap: 2 }, name: { color: colors.text, fontSize: 16, fontWeight: '800' }, status: { color: colors.primaryDark, fontSize: 11 }, more: { padding: 8 },
   error: { backgroundColor: colors.dangerSoft, color: colors.danger, fontSize: 12, padding: 10, textAlign: 'center' }, chatBackdrop: { flex: 1 }, messages: { flexGrow: 1, gap: 10, justifyContent: 'flex-end', padding: 16 }, messageRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, maxWidth: '84%' }, messageRowMine: { alignSelf: 'flex-end' }, messageStack: { gap: 4, maxWidth: '100%' }, bubble: { borderColor: colors.border, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 10 }, bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 5, borderColor: colors.primary }, bubbleOther: { backgroundColor: `${colors.surface}E8`, borderBottomLeftRadius: 5 }, messageText: { color: colors.text, fontSize: 15, lineHeight: 21 }, messageTextMine: { color: '#FFFFFF' }, time: { color: colors.textMuted, fontSize: 9, marginLeft: 4 }, timeMine: { alignSelf: 'flex-end', marginRight: 4 }, media: { borderRadius: 16, height: 190, width: 220 },
   empty: { alignItems: 'center', gap: 6, padding: 30 }, emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '800' }, emptyCopy: { color: colors.textMuted, fontSize: 13 }, composer: { alignItems: 'flex-end', backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', gap: 9, padding: 10, paddingHorizontal: 14 }, attach: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 }, input: { backgroundColor: colors.surfaceMuted, borderRadius: 20, color: colors.text, flex: 1, fontSize: 15, maxHeight: 110, minHeight: 42, paddingHorizontal: 16, paddingVertical: 10 }, send: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 21, height: 42, justifyContent: 'center', width: 42 }, sendDisabled: { backgroundColor: colors.border },
 });
