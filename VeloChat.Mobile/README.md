@@ -1,6 +1,6 @@
 # Velo Chat Mobile
 
-Expo SDK 57 / React Native client for the existing Velo Chat API.
+Expo SDK 54 / React Native client for the existing Velo Chat API. SDK 54 is used so the project can run in the current App Store/Play Store version of Expo Go.
 
 ## Included flows
 
