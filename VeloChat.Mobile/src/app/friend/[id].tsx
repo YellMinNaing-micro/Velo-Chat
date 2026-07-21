@@ -39,7 +39,7 @@ export default function FriendProfileScreen() {
       router.replace({ pathname: '/chat/[id]', params: { id: response.data.id, name: username, avatar: avatar || '', friendId: params.id } });
     } catch (reason) { setError(getApiError(reason, 'Unable to open this chat.')); setOpeningChat(false); }
   };
-  const gradient = mode === 'dark' ? ['#63483E', '#2A211E', colors.background] as const : ['#FFE2D2', '#FFF2EA', colors.background] as const;
+  const gradient = mode === 'dark' ? ['#1C443F', '#172825', colors.background] as const : ['#D6F2ED', '#EDF8F5', colors.background] as const;
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
