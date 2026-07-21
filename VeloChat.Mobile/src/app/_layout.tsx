@@ -4,23 +4,24 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 
 import { AuthProvider, useAuth } from '@/context/auth-context';
-import { colors } from '@/constants/colors';
+import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 450, fade: true });
 
 function RootNavigator() {
   const { user, isBooting } = useAuth();
+  const { colors, isThemeReady, mode } = useAppTheme();
 
   useEffect(() => {
-    if (!isBooting) SplashScreen.hide();
-  }, [isBooting]);
+    if (!isBooting && isThemeReady) SplashScreen.hide();
+  }, [isBooting, isThemeReady]);
 
-  if (isBooting) return null;
+  if (isBooting || !isThemeReady) return null;
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background }, headerShadowVisible: false }}>
         <Stack.Protected guard={!user}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -35,5 +36,5 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  return <AuthProvider><RootNavigator /></AuthProvider>;
+  return <AppThemeProvider><AuthProvider><RootNavigator /></AuthProvider></AppThemeProvider>;
 }
