@@ -10,6 +10,7 @@ namespace VeloChat.WebAPI.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
+[Tags("Messages")]
 public class MessagesController : ControllerBase
 {
     private readonly IMongoCollection<Message> _messageCollection;
@@ -20,6 +21,8 @@ public class MessagesController : ControllerBase
     }
 
     [HttpGet("room/{roomId}")]
+    [EndpointSummary("Get messages in a chat room")]
+    [EndpointDescription("Returns up to 100 messages for the specified chat room, ordered from oldest to newest.")]
     public async Task<ActionResult<List<Message>>> GetMessages(string roomId)
     {
         List<Message> messages = await _messageCollection
