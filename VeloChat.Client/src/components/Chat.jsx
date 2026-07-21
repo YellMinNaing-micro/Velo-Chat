@@ -4,11 +4,12 @@ import api, { API_BASE_URL } from '../services/api';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import { 
   LogOut, Plus, Users, Send, MessageSquare, Image, UserPlus, 
-  Smile, UserCheck, AlertCircle, Circle
+  Circle, Settings, Moon, Sun, MessagesSquare
 } from 'lucide-react';
+import ProfileSettings from './ProfileSettings';
 
 const Chat = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -18,10 +19,11 @@ const Chat = () => {
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [isGroupChat, setIsGroupChat] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('velo-theme') || 'dark');
 
   // Friend System states
   const [friends, setFriends] = useState([]);
-  const [friendEmailOrId, setFriendEmailOrId] = useState('');
   const [friendError, setFriendError] = useState('');
   const [friendSuccess, setFriendSuccess] = useState('');
   const [pendingRequests, setPendingRequests] = useState({ incoming: [], outgoing: [] });
@@ -72,7 +74,13 @@ const Chat = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    refreshProfile().catch((err) => console.warn('Unable to refresh profile:', err));
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('velo-theme', theme);
+  }, [theme]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -237,24 +245,6 @@ const Chat = () => {
     }
   };
 
-  // 7. Add Friend Request
-  const handleSendFriendRequest = async (e) => {
-    e.preventDefault();
-    setFriendError('');
-    setFriendSuccess('');
-
-    try {
-      // Find user by username or email on the backend
-      // (This assumes we can pass a userId or query)
-      await api.post(`/api/friendships/request/${friendEmailOrId}`);
-      setFriendSuccess('Friend request sent successfully!');
-      setFriendEmailOrId('');
-      fetchData();
-    } catch (err) {
-      setFriendError(typeof err === 'string' ? err : 'Failed to send request. Check user ID.');
-    }
-  };
-
   // Handle Search Input Change
   const handleSearchChange = async (e) => {
     const q = e.target.value;
@@ -345,16 +335,36 @@ const Chat = () => {
   };
 
   return (
-    <div className="glass-panel animate-fade-in-up" style={{
-      width: '95vw',
-      maxWidth: '1280px',
-      height: '85vh',
+    <>
+    <div className="glass-panel chat-shell animate-fade-in-up" style={{
+      width: '100vw',
+      maxWidth: 'none',
+      height: '100dvh',
       display: 'grid',
-      gridTemplateColumns: '320px 1fr',
+      gridTemplateColumns: '76px 320px minmax(0, 1fr)',
       overflow: 'hidden'
     }}>
+      <nav className="chat-rail" aria-label="Primary navigation">
+        <div className="brand-mark" title="Velo Chat">V</div>
+        <div className="rail-actions">
+          <button className="rail-button active" title="Chats"><MessagesSquare size={20} /></button>
+          <button className="rail-button" title="Add friend" onClick={() => { setShowAddFriend(true); setShowCreateRoom(false); }}><Users size={20} /></button>
+          <button className="rail-button" title="New chat" onClick={() => { setShowCreateRoom(true); setShowAddFriend(false); }}><Plus size={20} /></button>
+        </div>
+        <div className="rail-actions rail-bottom">
+          <button className="rail-button" title={theme === 'dark' ? 'Use light mode' : 'Use dark mode'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button className="rail-button" title="Account settings" onClick={() => setShowSettings(true)}><Settings size={20} /></button>
+          <button className="rail-button danger" title="Log out" onClick={logout}><LogOut size={20} /></button>
+          <button className="rail-avatar" title="Profile settings" onClick={() => setShowSettings(true)}>
+            {user?.profilePictureUrl ? <img src={user.profilePictureUrl} alt="" /> : user?.username?.substring(0, 2).toUpperCase()}
+          </button>
+        </div>
+      </nav>
+
       {/* Sidebar (Left) */}
-      <div style={{
+      <div className="chat-sidebar" style={{
         borderRight: '1px solid var(--border-color)',
         display: 'flex',
         flexDirection: 'column',
@@ -369,7 +379,7 @@ const Chat = () => {
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
+            <div className="user-avatar" style={{
               width: '40px',
               height: '40px',
               borderRadius: '50%',
@@ -382,10 +392,12 @@ const Chat = () => {
               fontSize: '18px',
               border: '2px solid rgba(255, 255, 255, 0.4)'
             }}>
-              {user?.username?.substring(0, 2).toUpperCase()}
+              {user?.profilePictureUrl
+                ? <img src={user.profilePictureUrl} alt="" />
+                : user?.username?.substring(0, 2).toUpperCase()}
             </div>
             <div>
-              <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '15px' }}>{user?.username}</div>
+              <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '15px' }}>{user?.fullName || user?.username}</div>
               <div style={{ fontSize: '12px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <Circle size={8} fill="currentColor" /> Active Now
               </div>
@@ -393,8 +405,8 @@ const Chat = () => {
           </div>
 
           <button 
-            onClick={logout} 
-            title="Log Out"
+            onClick={() => setShowSettings(true)}
+            title="Account Settings"
             style={{
               background: 'transparent',
               border: 'none',
@@ -407,7 +419,7 @@ const Chat = () => {
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
           >
-            <LogOut size={20} />
+            <Settings size={20} />
           </button>
         </div>
 
@@ -448,7 +460,7 @@ const Chat = () => {
         {showCreateRoom && (
           <form onSubmit={handleCreateRoom} style={{
             padding: '16px',
-            background: '#ffffff',
+            background: 'var(--bg-elevated)',
             borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             flexDirection: 'column',
@@ -482,7 +494,7 @@ const Chat = () => {
         {showAddFriend && (
           <div style={{
             padding: '16px',
-            background: '#ffffff',
+            background: 'var(--bg-elevated)',
             borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             flexDirection: 'column',
@@ -529,8 +541,8 @@ const Chat = () => {
                       gap: '8px',
                       padding: '8px',
                       borderRadius: '8px',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0'
+                      background: 'var(--bg-soft)',
+                      border: '1px solid var(--border-color)'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
                         <div style={{
@@ -752,7 +764,7 @@ const Chat = () => {
       </div>
 
       {/* Chat Area (Right) */}
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="chat-main" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
         {activeRoom ? (
           <>
             {/* Chat Room Header */}
@@ -762,7 +774,7 @@ const Chat = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: '#ffffff'
+              background: 'var(--bg-elevated)'
             }}>
               <div>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>{activeRoom.roomName}</h3>
@@ -889,7 +901,7 @@ const Chat = () => {
             <div style={{
               padding: '16px 24px',
               borderTop: '1px solid var(--border-color)',
-              background: '#ffffff'
+              background: 'var(--bg-elevated)'
             }}>
               <form onSubmit={handleSendMessage} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -959,6 +971,8 @@ const Chat = () => {
         )}
       </div>
     </div>
+    <ProfileSettings open={showSettings} onClose={() => setShowSettings(false)} />
+    </>
   );
 };
 
