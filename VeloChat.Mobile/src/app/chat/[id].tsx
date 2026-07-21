@@ -6,13 +6,16 @@ import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
-import { colors } from '@/constants/colors';
+import type { ThemeColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
+import { useAppTheme } from '@/context/theme-context';
 import { API_BASE_URL, api, getApiError } from '@/services/api';
 import { sessionStorage } from '@/services/session-storage';
 import type { ChatMessage } from '@/types/api';
 
 export default function ConversationScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string }>();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -108,8 +111,8 @@ export default function ConversationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: { backgroundColor: colors.surface, flex: 1 }, flex: { flex: 1 }, header: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: 10, minHeight: 68, paddingHorizontal: 12 }, back: { alignItems: 'center', height: 42, justifyContent: 'center', width: 34 }, headerText: { flex: 1, gap: 2 }, name: { color: colors.text, fontSize: 16, fontWeight: '800' }, status: { color: colors.primaryDark, fontSize: 11 }, more: { padding: 8 },
-  error: { backgroundColor: '#FFF0F1', color: colors.danger, fontSize: 12, padding: 10, textAlign: 'center' }, messages: { flexGrow: 1, gap: 10, justifyContent: 'flex-end', padding: 16 }, messageRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, maxWidth: '84%' }, messageRowMine: { alignSelf: 'flex-end' }, messageStack: { gap: 4, maxWidth: '100%' }, bubble: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 }, bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 5 }, bubbleOther: { backgroundColor: colors.surfaceMuted, borderBottomLeftRadius: 5 }, messageText: { color: colors.text, fontSize: 15, lineHeight: 21 }, messageTextMine: { color: '#FFFFFF' }, time: { color: colors.textMuted, fontSize: 9, marginLeft: 4 }, timeMine: { alignSelf: 'flex-end', marginRight: 4 }, media: { borderRadius: 16, height: 190, width: 220 },
+  error: { backgroundColor: colors.dangerSoft, color: colors.danger, fontSize: 12, padding: 10, textAlign: 'center' }, messages: { backgroundColor: colors.background, flexGrow: 1, gap: 10, justifyContent: 'flex-end', padding: 16 }, messageRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, maxWidth: '84%' }, messageRowMine: { alignSelf: 'flex-end' }, messageStack: { gap: 4, maxWidth: '100%' }, bubble: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 }, bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 5 }, bubbleOther: { backgroundColor: colors.surfaceMuted, borderBottomLeftRadius: 5 }, messageText: { color: colors.text, fontSize: 15, lineHeight: 21 }, messageTextMine: { color: '#FFFFFF' }, time: { color: colors.textMuted, fontSize: 9, marginLeft: 4 }, timeMine: { alignSelf: 'flex-end', marginRight: 4 }, media: { borderRadius: 16, height: 190, width: 220 },
   empty: { alignItems: 'center', gap: 6, padding: 30 }, emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '800' }, emptyCopy: { color: colors.textMuted, fontSize: 13 }, composer: { alignItems: 'flex-end', borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', gap: 9, padding: 10, paddingHorizontal: 14 }, attach: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 }, input: { backgroundColor: colors.surfaceMuted, borderRadius: 20, color: colors.text, flex: 1, fontSize: 15, maxHeight: 110, minHeight: 42, paddingHorizontal: 16, paddingVertical: 10 }, send: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 21, height: 42, justifyContent: 'center', width: 42 }, sendDisabled: { backgroundColor: '#BFC8C6' },
 });
