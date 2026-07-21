@@ -1,14 +1,14 @@
 export const lightColors = {
-  background: '#FBF7F4', surface: '#FFFFFF', surfaceMuted: '#F6F0EC',
-  text: '#1D1917', textMuted: '#817773', border: '#EDE3DD',
-  primary: '#0BA99B', primaryDark: '#087D75', primarySoft: '#E4F8F5',
+  background: '#F4F7F6', surface: '#FFFFFF', surfaceMuted: '#EDF3F1',
+  text: '#17211F', textMuted: '#74817E', border: '#DDE6E3',
+  primary: '#10A99A', primaryDark: '#087D73', primarySoft: '#DDF5F1',
   danger: '#D94A56', dangerSoft: '#FFF0F1', warning: '#EE792D', success: '#22A46F',
 } as const;
 
 export const darkColors: ThemeColors = {
-  background: '#100E0D', surface: '#181412', surfaceMuted: '#261F1C',
-  text: '#FFF8F4', textMuted: '#AA9C95', border: '#392F2A',
-  primary: '#20C7B7', primaryDark: '#72E5DA', primarySoft: '#193733',
+  background: '#0D1211', surface: '#141A19', surfaceMuted: '#202826',
+  text: '#F2F8F6', textMuted: '#91A09C', border: '#2B3633',
+  primary: '#25C4B4', primaryDark: '#72E5DA', primarySoft: '#173A36',
   danger: '#FF858C', dangerSoft: '#3A2024', warning: '#FF9B5A', success: '#46D49A',
 };
 
