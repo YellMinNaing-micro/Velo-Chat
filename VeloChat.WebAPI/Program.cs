@@ -126,7 +126,12 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// Keep the HTTP development endpoint reachable by Expo emulators and physical
+// devices. Production still redirects to HTTPS.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("AllowClient");
 
