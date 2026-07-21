@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useFocusEffect } from 'expo-router';
+import { Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -56,7 +56,7 @@ export default function FriendsScreen() {
     const response = await api.post<ChatRoom>(`/api/chatrooms/dm/${friend.id}`);
     router.push({ pathname: '/chat/[id]', params: { id: response.data.id, name: friend.userName, avatar: friend.profilePictureUrl || '', friendId: friend.id } });
   };
-  const openProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } });
+  const openProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } } as unknown as Href);
 
   const people = query.trim() ? results : friends;
   return (
