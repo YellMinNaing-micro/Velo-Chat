@@ -1,155 +1,151 @@
-# VeloChat - Real-Time Glassmorphic Messaging App (မြန်မာဘာသာ)
+# VeloChat — Web နှင့် Mobile Real-Time Messaging App
 
-VeloChat သည် စွမ်းဆောင်ရည်မြင့်မားသော **ASP.NET Core 10 Web API** backend နှင့် လှပသပ်ရပ်သော **React (Vite) SPA** client တို့ကို ပေါင်းစပ်ဖန်တီးထားသည့် real-time စကားပြော (messaging) စနစ်ဖြစ်ပြီး **Monorepo Architecture** ပုံစံဖြင့် တည်ဆောက်ထားပါသည်။
+VeloChat သည် **ASP.NET Core 10 Web API**, **React + Vite Web Client** နှင့် **Expo React Native Mobile App** တို့ပါဝင်သည့် real-time messaging monorepo project ဖြစ်သည်။ ယခုအခါ browser အပြင် Android နှင့် iOS mobile device များတွင်ပါ အသုံးပြုစမ်းသပ်နိုင်ပြီဖြစ်သည်။
 
----
+> English ဖြင့်ဖတ်ရန်: **[README.md](./README.md)**
 
-## ဘာသာစကား ရွေးချယ်ရန် / Language
-အင်္ဂလိပ်ဘာသာဖြင့် ရေးသားထားသော မူရင်းနည်းပညာဆိုင်ရာ အသေးစိတ်လမ်းညွှန်ချက်ကို ဤနေရာတွင် ဖတ်ရှုနိုင်သည် -
-👉 **[README.md](file:///c:/repos/Velo/Velo-Chat/README.md)**
+## Project များ
 
----
-
-## ၁။ စနစ်၏ တည်ဆောက်ပုံ (System Architecture)
-
-VeloChat သည် အချိန်နှင့်တပြေးညီ (real-time) စာတိုပေးပို့မှုများကို မြန်ဆန်ချောမွေ့စေရန်နှင့် server စွမ်းဆောင်ရည်ကို မြှင့်တင်ရန် database နှစ်ခု ပူးတွဲအသုံးပြုသည့်စနစ် (dual-database strategy) ကို အသုံးပြုထားသည်။
+| Project | နည်းပညာ | အသုံးပြုပုံ |
+| --- | --- | --- |
+| [`VeloChat.WebAPI`](./VeloChat.WebAPI) | ASP.NET Core 10, SignalR | REST API, authentication, friend, profile နှင့် real-time chat |
+| [`VeloChat.Client`](./VeloChat.Client) | React, Vite | Browser တွင်သုံးသည့် web client |
+| [`VeloChat.Mobile`](./VeloChat.Mobile) | React Native, Expo | Android နှင့် iOS mobile app |
 
 ```mermaid
-graph TD
-    Client[React Frontend] -->|HTTP REST / JWT| Auth[AuthController]
-    Client -->|HTTP REST / JWT| Friend[FriendshipsController]
-    Client -->|WebSockets / SignalR| Hub[ChatHub]
-    
-    Auth -->|EF Core / Identity| MSSQL[(MSSQL Server)]
-    Friend -->|EF Core / Relationships| MSSQL
-    Hub -->|Write Messages| MongoDB[(MongoDB)]
-    Hub -->|User Status / DM Room Init| MSSQL
+flowchart LR
+    Web[React Web Client] -->|REST + JWT| API[ASP.NET Core Web API]
+    Mobile[Expo Mobile Client] -->|REST + JWT| API
+    Web <-->|SignalR| Hub[ChatHub]
+    Mobile <-->|SignalR| Hub
+    API --> SQL[(SQL Server)]
+    API --> Mongo[(MongoDB)]
+    Hub --> SQL
+    Hub --> Mongo
 ```
 
-### ပရောဂျက် တည်ဆောက်ပုံခွဲခြားမှု
-- **`VeloChat.WebAPI`**: Backend ဝန်ဆောင်မှုများဖြစ်ပြီး API Controller များ၊ Entity Model များ၊ Database Migrations များနှင့် SignalR Socket Hub များ ပါဝင်သည်။
-- **`VeloChat.Client`**: Frontend React Client ဖြစ်ပြီး backend REST APIs များနှင့် ချိတ်ဆက်ရန် Axios wrapper ကိုလည်းကောင်း၊ Real-time updates များအတွက် SignalR Websocket link ကိုလည်းကောင်း အသုံးပြုသည်။
+## ပါဝင်သည့်လုပ်ဆောင်ချက်များ
 
----
+- Register, login, logout နှင့် refresh-token flow
+- Mobile splash screen တွင် session ပြန်စစ်ပြီး SecureStore ဖြင့် token သိမ်းဆည်းခြင်း
+- Friend ရှာခြင်း၊ request ပို့/လက်ခံခြင်း၊ friend list နှင့် friend profile ကြည့်ခြင်း
+- SignalR ဖြင့် real-time chat, online status နှင့် typing indicator
+- Profile edit, password change နှင့် light/dark theme ပြောင်းခြင်း
+- Identity နှင့် relational data အတွက် SQL Server၊ message များအတွက် MongoDB
+- Responsive web UI နှင့် Expo Android/iOS mobile UI
 
-## ၂။ Backend ဒီဇိုင်းနှင့် လုပ်ဆောင်ချက်များ (`VeloChat.WebAPI`)
+## လိုအပ်ချက်များ
 
-### Database ပုံစံများ (Schema Design)
-စနစ်၏ performance ကို ကောင်းမွန်စေရန် relational data များနှင့် chat message data များကို database သီးခြားစီတွင် ခွဲခြားသိမ်းဆည်းထားသည်။
+- .NET 10 SDK
+- Node.js 18 သို့မဟုတ် အထက်
+- SQL Server
+- MongoDB — default `mongodb://localhost:27017`
+- ဖုန်းဖြင့်စမ်းရန် Expo Go သို့မဟုတ် Android/iOS emulator
 
-#### Relational Schema (MSSQL Database)
-Entity Framework Core ကို အသုံးပြု၍ local SQL Server ပေါ်တွင် table များကို အောက်ပါအတိုင်း ချိတ်ဆက်တည်ဆောက်ထားပါသည် -
-1. **`AspNetUsers`** (Identity User):
-   - `Id` (GUID Primary Key)
-   - `UserName` / `NormalizedUserName`
-   - `Email` / `NormalizedEmail`
-   - `PasswordHash`
-   - `FullName` (အသုံးပြုသူ ရှာဖွေရာတွင် သုံးရန် ကိုယ်ပိုင်အမည်ဖြည့်စွက်ချက်)
-   - `ProfilePictureUrl` (Profile ဓာတ်ပုံလင့်ခ်များ)
-   - `IsOnline` (အသုံးပြုသူ online ရှိ/မရှိ ပြသရန် boolean flag)
-   - `RefreshToken` / `RefreshTokenExpiryTime` (Token သက်တမ်းတိုးရန်အတွက် သုံးသော encryption keys)
-2. **`Friendships`** (သူငယ်ချင်း ချိတ်ဆက်မှုဇယား):
-   - `Id` (Integer PK)
-   - `UserId` (Friend request ပို့သူ၏ FK)
-   - `FriendId` (Friend request လက်ခံသူ၏ FK)
-   - `Status` (ဆက်သွယ်မှုအခြေအနေ: `Pending` | `Accepted`)
-   - `CreatedAt` (အချိန်မှတ်တမ်း)
-3. **`ChatRooms`** (စကားပြောခန်းများ):
-   - `Id` (GUID PK)
-   - `RoomName` (အခန်းအမည်)
-   - `IsGroupChat` (Group ဖြစ်မဖြစ် boolean flag)
-   - `CreatedAt` (ဖန်တီးသည့်အချိန်)
-4. **`RoomParticipants`** (အသုံးပြုသူနှင့် စကားပြောခန်း ချိတ်ဆက်မှုဇယား):
-   - `RoomId` (စကားပြောခန်း FK - Composite Key)
-   - `UserId` (အသုံးပြုသူ FK - Composite Key)
-   - `JoinedAt` (စတင်ဝင်ရောက်သည့်အချိန်)
+## ၁။ Backend စတင်ခြင်း
 
-#### Document-Store Collection (MongoDB)
-မြန်ဆန်သော စာရေး/စာဖတ်စနစ်အတွက် chat messages များကို schema-less database ဖြစ်သော MongoDB တွင် အောက်ပါအတိုင်း သိမ်းဆည်းပါသည် -
-1. **`Messages`**:
-   - `Id` (MongoDB ObjectId)
-   - `RoomId` (စကားပြောခန်း၏ ID ဖြစ်ပြီး `ChatRoom.Id` နှင့် ချိတ်ဆက်ထားသည်)
-   - `SenderId` (စာပို့သူ၏ User ID ဖြစ်ပြီး `ApplicationUser.Id` နှင့် ကိုက်ညီသည်)
-   - `SenderName` (စာပို့သူ၏ Username အား API querying သက်သာစေရန် ဤနေရာတွင် တိုက်ရိုက် cache လုပ်ထားသည်)
-   - `Content` (စာသားပါဝင်မှု)
-   - `Type` (အမျိုးအစား: `text` | `image` | `file`)
-   - `MediaUrl` (ဓာတ်ပုံ သို့မဟုတ် file ပူးတွဲပါက ၎င်း၏လင့်ခ်)
-   - `Timestamp` (စာပို့သည့်အချိန်မှတ်တမ်း UTC)
+Repository root မှာ အောက်ပါ command များကို run ပါ။
 
----
+```powershell
+dotnet ef database update --project VeloChat.WebAPI
+dotnet run --project VeloChat.WebAPI --launch-profile https
+```
 
-### Authentication နှင့် Token သက်တမ်းတိုးခြင်း လုပ်ငန်းစဉ် (Token Rotation Flow)
-စနစ်လုံခြုံရေးအတွက် Custom JWT Bearer Token (Access Token နှင့် Refresh Token) စနစ်ကို အောက်ပါလုပ်ငန်းစဉ်အတိုင်း အသုံးပြုထားပါသည် -
+ဒီ launch profile က endpoint နှစ်ခုလုံးကို ဖွင့်ပေးသည်။
 
-1. **Registration (အကောင့်ဖွင့်ခြင်း)**: 
-   - `POST /api/auth/register` သို့ Username, FullName, Email, Password နှင့် ProfilePictureUrl ပါဝင်သော `RegisterDto` ပေးပို့ပြီး အကောင့်ဖွင့်နိုင်သည်။
-2. **Login (ဝင်ရောက်ခြင်း)**: 
-   - `POST /api/auth/login` သို့ ဝင်ရောက်ပြီး အထောက်အထားမှန်ကန်ပါက user အား `IsOnline = true` ပြောင်းလဲပြီး သက်တမ်း ၁၅ မိနစ်ရှိသော **Access Token** နှင့် သက်တမ်း ၇ ရက်ရှိသော **Refresh Token** ကို ထုတ်ပေးပြီး MSSQL တွင် သိမ်းဆည်းသည်။
-3. **Automatic Token Rotation (အလိုအလျောက် သက်တမ်းတိုးခြင်း)**:
-   - Access Token သက်တမ်းကုန်ဆုံးသွားပြီးနောက် client မှ API သို့ ခေါ်ယူပါက `401 Unauthorized` error ပြန်လာမည်ဖြစ်သည်။
-   - Frontend client ရှိ Axios interceptor သည် ၎င်း 401 error ကို တွေ့သည်နှင့် ကျန်ရှိသော API calls များကို ခေတ္တရပ်ဆိုင်း (halt) ကာ `POST /api/auth/refresh` သို့ လက်ရှိ `AccessToken` နှင့် `RefreshToken` ပေးပို့၍ Token အသစ် တောင်းခံမည်ဖြစ်သည်။
-   - Server မှ သက်တမ်းကိုစစ်ဆေးပြီး မှန်ကန်ပါက token အသစ်အတွဲကို database တွင် update လုပ်ကာ client သို့ ပြန်လည်ပေးပို့ပြီး ခေတ္တဆိုင်းငံ့ထားသော API calls များကို token အသစ်ဖြင့် ဆက်လက်လုပ်ဆောင်စေမည်ဖြစ်သည်။
-4. **Revocation (ထွက်ခွာခြင်း)**:
-   - `POST /api/auth/revoke` သို့ ဝင်ရောက်ပြီး user ၏ refresh token ကို database မှ ဖျက်သိမ်းကာ `IsOnline = false` သို့ ပြောင်းလဲပေးသည်။
+- Web/local HTTPS: `https://localhost:7010`
+- Mobile/LAN HTTP: `http://<YOUR-PC-IP>:5027`
+- Scalar API docs: `https://localhost:7010/scalar/v1`
 
----
+Local SQL Server သို့မဟုတ် MongoDB setting မတူပါက `VeloChat.WebAPI/appsettings.json` ထဲက connection string များကို ပြင်ပါ။
 
-### Real-Time SignalR Gateway (`ChatHub`)
-အချိန်နှင့်တပြေးညီ အပြန်အလှန်ချိတ်ဆက်မှုများအတွက် Websocket framework ဖြစ်သော SignalR ကို အသုံးပြုထားသည် -
-- **Group Scoping**: Client က room တစ်ခုခုကို ရွေးချယ်လိုက်သည်နှင့် server ပေါ်တွင် `JoinRoom(roomId)` ကို ခေါ်ယူပြီး ယခင် room ထဲမှ ထွက်ရန် `LeaveRoom(roomId)` ကို ခေါ်ယူသည်။ သို့ဖြစ်ရာ message များသည် သက်ဆိုင်ရာ room ထဲရှိသူများထံသာ စီးဆင်းမည်ဖြစ်သည်။
-- **Message Pipeline**: စာတိုပေးပို့ရန် `SendMessage` ကို ခေါ်ယူလိုက်ပါက backend သည် စာတိုကို MongoDB သို့ ချက်ချင်းသိမ်းဆည်းပြီး room ထဲရှိ active ဖြစ်နေသော user အားလုံးထံ ချက်ချင်း broadcast ပို့ပေးမည်ဖြစ်သည်။
-- **Typing Indicator**: စာရိုက်နေစဉ်တွင် client မှ `SendTyping(roomId, isTyping)` ကို လှမ်းခေါ်ပြီး အခြားအဖွဲ့ဝင်များထံသို့ `test_user is typing...` စာသားကို dynamic ပြသပေးသည်။
+## ၂။ Web client စမ်းသပ်ခြင်း
 
----
+Terminal အသစ်တစ်ခုမှာ run ပါ။
 
-## ၃။ Frontend ဒီဇိုင်းနှင့် တည်ဆောက်ပုံ (`VeloChat.Client`)
+```powershell
+cd VeloChat.Client
+npm install
+npm run dev
+```
 
-- **`AuthContext.jsx`**: တစ်ပတ်ရစ် app လည်ပတ်မှုအတွက် login state၊ logout flow များကို ထိန်းသိမ်းပေးပြီး token payload မှ claims (user ID, username, email) များကို parse လုပ်ယူသည်။
-- **`api.js`**: Axios connection wrapper ဖြစ်ပြီး API calls တိုင်းတွင် `Authorization: Bearer <token>` ကို အလိုအလျောက် ပေါင်းထည့်ပေးသည်။ 401 error ရရှိပါက အလိုအလျောက် token သက်တမ်းတိုးပေးသည့် interceptor ပါဝင်သည်။
-- **`Register.jsx` / `Login.jsx`**: Glassmorphism ဆန်ဆန် လှပသော ဝင်ရောက်ရန် စာမျက်နှာများ။
-- **`Chat.jsx`**: အဓိက chat panel ကြီးဖြစ်ပြီး ၎င်းတွင် -
-  - Sidebar: Profile၊ အမြန်ခလုတ်များ (New Chat စတင်ရန်နှင့် Add Friend toggle လုပ်ရန်)၊ dynamic user search list၊ chat rooms၊ သူငယ်ချင်းစာရင်းနှင့် friend request စောင့်ဆိုင်းနေမှုများ ပါဝင်သည်။
-  - Conversation Window: စာတိုများ လည်ပတ်စီးဆင်းမှု၊ typing indicator အန်နီမေးရှင်းများ၊ ဓာတ်ပုံ attachments များပြသမှုနှင့် message input box။
+Browser မှာ `http://localhost:5173` ကိုဖွင့်ပါ။ Web client အတွက် backend ကို `https://localhost:7010` ဖြင့် သုံးနိုင်သည်။
 
----
+## ၃။ ဖုန်းအစစ်ဖြင့် Mobile App စမ်းသပ်ခြင်း
 
-## ၄။ စနစ်အား စတင်လည်ပတ်ပုံ (Run Instructions)
+ဖုန်းနှင့် development PC ကို **Wi-Fi တစ်ခုတည်း** ချိတ်ထားရမည်။
 
-### လိုအပ်ချက်များ
-- **.NET 10 SDK** တင်ထားရန်။
-- **Node.js (v18 သို့မဟုတ် ထို့ထက်မြင့်သော version)** တင်ထားရန်။
-- **MSSQL Server** (SQL Express သို့မဟုတ် LocalDB) run ထားရန်။
-- **MongoDB** (`mongodb://localhost:27017` တွင် run ထားရန်)။
+1. PC ၏ Wi-Fi IPv4 address ကိုရှာပါ။
 
-### အဆင့်ဆင့် လုပ်ဆောင်ရန်
-
-#### ၁။ Database tables များဆောက်ပြီး Backend စတင်ခြင်း
-1. Terminal တစ်ခုဖွင့်ပြီး backend folder ထဲသို့ ဝင်ပါ:
    ```powershell
-   cd VeloChat.WebAPI
+   ipconfig
    ```
-2. လိုအပ်ပါက `appsettings.json` တွင် local database ချိတ်ဆက်မှု လိပ်စာများကို ပြင်ဆင်ပါ။
-3. Database ဇယားများ တည်ဆောက်ရန် migration ကို apply လုပ်ပါ:
-   ```powershell
-   dotnet ef database update
-   ```
-4. Backend API ကို စတင်လည်ပတ်စေပါ:
-   ```powershell
-   dotnet run
-   ```
-   Backend သည် `https://localhost:7010` တွင် စတင်လည်ပတ်မည် ဖြစ်ပြီး Scalar API စမ်းသပ်ခန်းကို `https://localhost:7010/scalar/v1` တွင် ဝင်ရောက်ကြည့်ရှုနိုင်သည်။
 
-#### ၂။ Frontend Client စတင်ခြင်း
-1. Terminal အသစ်တစ်ခုထပ်ဖွင့်ပြီး client folder ထဲသို့ ဝင်ပါ:
+   **Wireless LAN adapter Wi-Fi** အောက်ရှိ **IPv4 Address** ကိုယူပါ။
+
+2. Mobile environment file တည်ဆောက်ပါ။
+
    ```powershell
-   cd VeloChat.Client
+   cd VeloChat.Mobile
+   Copy-Item .env.example .env
    ```
-2. လိုအပ်သော packages များ ထည့်သွင်းပါ:
+
+3. `VeloChat.Mobile/.env` တွင် PC ၏ LAN IP ကိုထည့်ပါ။ ဥပမာ —
+
+   ```dotenv
+   EXPO_PUBLIC_API_URL=http://192.168.100.72:5027
+   ```
+
+   ဖုန်းအစစ်တွင် `localhost` မသုံးရပါ။ ဖုန်းအတွက် `localhost` ဆိုသည်မှာ PC မဟုတ်ဘဲ ဖုန်းကိုယ်တိုင်ကို ဆိုလိုသည်။
+
+4. Package များထည့်ပြီး Expo ကို LAN mode ဖြင့်ဖွင့်ပါ။
+
    ```powershell
    npm install
+   npx expo start --clear --lan
    ```
-3. Vite Development server ကို စတင်ပါ:
-   ```powershell
-   npm run dev
+
+5. ဖုန်းထဲက နောက်ဆုံး version **Expo Go** ကိုဖွင့်ပြီး QR code ကို scan ပါ။
+
+6. API မချိတ်နိုင်ပါက ဖုန်း browser မှာ အောက်ပါ URL ကိုအရင်စမ်းပါ။
+
+   ```text
+   http://<YOUR-PC-IP>:5027/scalar/v1
    ```
-4. ဘရောက်ဇာတွင် `http://localhost:5173` သို့ သွားရောက်ပြီး စတင်အသုံးပြုနိုင်ပါပြီ။
+
+   မပွင့်ပါက Windows Firewall တွင် backend ကို Private network အတွက် allow လုပ်ထားကြောင်း၊ ဖုန်းနှင့် PC က Wi-Fi တစ်ခုတည်းဖြစ်ကြောင်းနှင့် VPN ကြောင့် local network ပိတ်မနေကြောင်း စစ်ပါ။
+
+## Emulator အတွက် API address
+
+| စမ်းမည့်နေရာ | `EXPO_PUBLIC_API_URL` |
+| --- | --- |
+| ဖုန်းအစစ် | `http://<YOUR-PC-IP>:5027` |
+| Android emulator | `http://10.0.2.2:5027` |
+| iOS simulator | `http://localhost:5027` |
+
+`.env` ပြင်ပြီးတိုင်း `npx expo start --clear` ဖြင့် Expo ကို restart လုပ်ပါ။
+
+## Mobile local testing မှာ HTTP သုံးရသည့်အကြောင်း
+
+Development PC ပေါ်က web browser သည် ASP.NET localhost development certificate ကိုအသုံးပြုပြီး `https://localhost:7010` ကိုချိတ်နိုင်သည်။ ဖုန်းအစစ်တွင် PC ၏ `localhost` ကိုမရောက်နိုင်သလို LAN IP အတွက် development certificate ကိုလည်း ပုံမှန်အားဖြင့် မယုံကြည်ပါ။ ထို့ကြောင့် local mobile testing တွင် `http://<YOUR-PC-IP>:5027` ကိုသုံးသည်။ Production တင်သည့်အခါ valid public certificate ပါသော HTTPS API ကိုသုံးရမည်။
+
+## ပြဿနာဖြေရှင်းရန်
+
+### “Project is incompatible with this version of Expo Go”
+
+- App Store သို့မဟုတ် Play Store မှ Expo Go ကို update လုပ်ပါ။
+- Expo server ကိုပိတ်ပြီး `npx expo start --clear --lan` ပြန် run ပါ။
+- Expo Go recent list ထဲက project အဟောင်းမဖွင့်ဘဲ လက်ရှိ terminal မှ QR code အသစ်ကို scan ပါ။
+
+### Mobile တွင် “Network request failed”
+
+- Backend terminal တွင် `http://0.0.0.0:5027` ပြထားကြောင်း စစ်ပါ။
+- `.env` ထဲက IP သည် PC ၏ လက်ရှိ Wi-Fi IPv4 address ဖြစ်ကြောင်း စစ်ပါ။
+- ဖုန်း browser မှ `http://<YOUR-PC-IP>:5027/scalar/v1` ကိုစမ်းပါ။
+- Wi-Fi client isolation, VPN နှင့် Windows Firewall ကိုစစ်ပါ။
+
+## အသုံးဝင်သော Link များ
+
+- [`AppDbContext.cs`](./VeloChat.WebAPI/Data/AppDbContext.cs)
+- [`ChatHub.cs`](./VeloChat.WebAPI/Hubs/ChatHub.cs)
+- [Mobile အသေးစိတ် README](./VeloChat.Mobile/README.md)
