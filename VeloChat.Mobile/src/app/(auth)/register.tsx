@@ -6,11 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '@/components/brand-logo';
 import { FormField } from '@/components/form-field';
 import { PrimaryButton } from '@/components/primary-button';
-import { colors } from '@/constants/colors';
+import type { ThemeColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
+import { useAppTheme } from '@/context/theme-context';
 import { getApiError } from '@/services/api';
 
 export default function RegisterScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const { register } = useAuth();
   const [form, setForm] = useState({ username: '', fullName: '', email: '', password: '', profilePictureUrl: '' });
   const [error, setError] = useState('');
@@ -47,10 +50,10 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: { backgroundColor: colors.surface, flex: 1 }, flex: { flex: 1 }, content: { padding: 28, paddingBottom: 42 },
   heading: { gap: 7, marginBottom: 26, marginTop: 26 }, title: { color: colors.text, fontSize: 31, fontWeight: '900', letterSpacing: -1.1 },
   subtitle: { color: colors.textMuted, fontSize: 15 }, form: { gap: 16 },
-  error: { backgroundColor: '#FFF0F1', borderRadius: 12, color: colors.danger, fontSize: 13, marginBottom: 16, padding: 13 },
+  error: { backgroundColor: colors.dangerSoft, borderRadius: 12, color: colors.danger, fontSize: 13, marginBottom: 16, padding: 13 },
   footer: { color: colors.textMuted, fontSize: 14, marginTop: 26, textAlign: 'center' }, link: { color: colors.primaryDark, fontWeight: '800' },
 });
