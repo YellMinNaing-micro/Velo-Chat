@@ -10,7 +10,8 @@ Expo SDK 54 / React Native client for the existing Velo Chat API. SDK 54 is used
 - Login, registration, protected navigation and logout/revoke
 - Chat list, friend matches, user search, friend requests and direct messages
 - SignalR conversation history, live messages and typing state
-- Profile editing
+- Read-only profile overview with on-demand editing and password change
+- Persistent light and dark themes across the full app
 
 ## Run locally
 
