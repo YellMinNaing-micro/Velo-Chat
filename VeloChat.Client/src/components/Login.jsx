@@ -33,7 +33,8 @@ const Login = ({ onNavigateToRegister }) => {
       gap: '24px'
     }}>
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>Welcome to VeloChat</h2>
+        <div className="auth-brand"><img src="/velo-logo.svg" alt="" /><span>Velo Chat</span></div>
+        <h2 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px', color: 'var(--text-primary)' }}>Welcome to Velo Chat</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Sign in to connect with your friends in real-time</p>
       </div>
 
