@@ -1,158 +1,151 @@
-# VeloChat - Real-Time Glassmorphic Messaging App
+# VeloChat — Real-Time Messaging for Web and Mobile
 
-An Expo React Native client is available in [`VeloChat.Mobile`](./VeloChat.Mobile). See its README for emulator/device API configuration and run commands.
+VeloChat is a real-time messaging application built as a monorepo with an **ASP.NET Core 10 Web API**, a **React + Vite web client**, and an **Expo React Native mobile app**.
 
-VeloChat is a high-performance, real-time messaging application designed with a **monorepo architecture**. It consists of an **ASP.NET Core 10 Web API** backend and a responsive **React (Vite) SPA** client. 
+> မြန်မာဘာသာဖြင့်ဖတ်ရန်: **[README.my.md](./README.my.md)**
 
----
+## Applications
 
-## Localization / ဘာသာစကား
-For the detailed documentation in Burmese (မြန်မာဘာသာ), please refer to:
-👉 **[README.my.md](file:///c:/repos/Velo/Velo-Chat/README.my.md)**
-
----
-
-## 1. System Architecture
-
-VeloChat employs a dual-database strategy and web socket gateway to achieve high scalability, clean decoupling, and smooth real-time performance.
+| Project | Technology | Purpose |
+| --- | --- | --- |
+| [`VeloChat.WebAPI`](./VeloChat.WebAPI) | ASP.NET Core 10, SignalR | REST API, authentication, friends, profiles, and real-time chat |
+| [`VeloChat.Client`](./VeloChat.Client) | React, Vite | Browser-based web client |
+| [`VeloChat.Mobile`](./VeloChat.Mobile) | React Native, Expo | Android and iOS mobile client |
 
 ```mermaid
-graph TD
-    Client[React Frontend] -->|HTTP REST / JWT| Auth[AuthController]
-    Client -->|HTTP REST / JWT| Friend[FriendshipsController]
-    Client -->|WebSockets / SignalR| Hub[ChatHub]
-    
-    Auth -->|EF Core / Identity| MSSQL[(MSSQL Server)]
-    Friend -->|EF Core / Relationships| MSSQL
-    Hub -->|Write Messages| MongoDB[(MongoDB)]
-    Hub -->|User Status / DM Room Init| MSSQL
+flowchart LR
+    Web[React Web Client] -->|REST + JWT| API[ASP.NET Core Web API]
+    Mobile[Expo Mobile Client] -->|REST + JWT| API
+    Web <-->|SignalR| Hub[ChatHub]
+    Mobile <-->|SignalR| Hub
+    API --> SQL[(SQL Server)]
+    API --> Mongo[(MongoDB)]
+    Hub --> SQL
+    Hub --> Mongo
 ```
 
-### Decoupled Monorepo Structure
-- **`VeloChat.WebAPI`**: Contains the API controllers, entity configurations, database migrations, token generation services, and the SignalR WebSocket hub.
-- **`VeloChat.Client`**: The frontend React workspace. It communicates with the backend REST APIs using an Axios wrapper and establishes a persistent SignalR socket for real-time traffic.
+## Features
 
----
+- Register, login, logout, access-token refresh, and refresh-token rotation
+- Mobile splash-screen session restoration with tokens stored in SecureStore
+- Friend search, requests, friend lists, and friend profile viewing
+- Real-time direct chat, online status, and typing indicators through SignalR
+- Editable profile, password change, and light/dark themes
+- SQL Server for identity and relational data; MongoDB for messages
+- Responsive web UI plus an Expo-based Android/iOS UI
 
-## 2. Backend Design (`VeloChat.WebAPI`)
+## Prerequisites
 
-### Database Design & Schema
-VeloChat divides its data storage engines to optimize reads and writes.
+- .NET 10 SDK
+- Node.js 18 or newer
+- SQL Server
+- MongoDB at `mongodb://localhost:27017`, unless configured differently
+- Expo Go on a physical phone, or an Android/iOS emulator for mobile testing
 
-#### Relational Schema (MSSQL)
-EF Core maps relationships to the local SQL Server database using custom configuration in [AppDbContext.cs](file:///c:/repos/Velo/Velo-Chat/VeloChat.WebAPI/Data/AppDbContext.cs).
-1. **`AspNetUsers`** (Identity User):
-   - `Id` (GUID Primary Key)
-   - `UserName` / `NormalizedUserName`
-   - `Email` / `NormalizedEmail`
-   - `PasswordHash`
-   - `FullName` (custom string for search purposes)
-   - `ProfilePictureUrl` (custom avatar links)
-   - `IsOnline` (boolean flag toggled during login, SignalR connection, and logout/revocation)
-   - `RefreshToken` / `RefreshTokenExpiryTime` (holds token rotation keys)
-2. **`Friendships`**:
-   - `Id` (Integer PK)
-   - `UserId` (FK referencing the request sender)
-   - `FriendId` (FK referencing the request recipient)
-   - `Status` (string: `Pending` | `Accepted`)
-   - `CreatedAt` (DateTime)
-3. **`ChatRooms`**:
-   - `Id` (GUID PK)
-   - `RoomName` (string)
-   - `IsGroupChat` (boolean)
-   - `CreatedAt` (DateTime)
-4. **`RoomParticipants`** (Composite table joining Users & ChatRooms):
-   - `RoomId` (FK composite key)
-   - `UserId` (FK composite key)
-   - `JoinedAt` (DateTime)
+## 1. Start the backend
 
-#### Document-Store Collection (MongoDB)
-MongoDB is selected for message persistence because of its high-throughput, schema-less properties.
-1. **`Messages`**:
-   - `Id` (MongoDB ObjectId)
-   - `RoomId` (string representation of `ChatRoom.Id`)
-   - `SenderId` (string representation of `ApplicationUser.Id`)
-   - `SenderName` (string cache of username to avoid repetitive queries)
-   - `Content` (string text content)
-   - `Type` (string: `text` | `image` | `file`)
-   - `MediaUrl` (optional string link to files/attachments)
-   - `Timestamp` (DateTime UTC)
+From the repository root:
 
----
+```powershell
+dotnet ef database update --project VeloChat.WebAPI
+dotnet run --project VeloChat.WebAPI --launch-profile https
+```
 
-### Authentication & Token Rotation Flow
-Secure communication is maintained using Bearer JWT. Instead of default cookie cookies, we implemented a custom Access + Refresh Token flow.
+This launch profile exposes both endpoints:
 
-1. **Registration**: 
-   - Requests hitting `POST /api/auth/register` receive a `RegisterDto` containing Username, FullName, Email, Password, and ProfilePictureUrl. Validations are executed via ASP.NET Core Identity.
-2. **Login**: 
-   - Requests hitting `POST /api/auth/login` validate credentials. Upon success, the server marks the user `IsOnline = true`, generates an **Access Token** (valid for 15 minutes) and a **Refresh Token** (cryptographically random string valid for 7 days), and updates the database with the new refresh token.
-3. **Automatic Token Rotation**:
-   - When the frontend attempts to run requests with an expired Access Token, it receives a `401 Unauthorized` response.
-   - The frontend Axios interceptor intercepts this error, halts subsequent requests, and triggers a `POST /api/auth/refresh` request sending the current `AccessToken` and `RefreshToken`.
-   - The server validates claims, checks if the refresh token in the database is not expired, issues a new `AccessToken` and `RefreshToken`, updates the database, and returns them to the client.
-4. **Revocation**:
-   - Hitting `POST /api/auth/revoke` clears the user's `RefreshToken` and `RefreshTokenExpiryTime` columns in MSSQL and sets `IsOnline = false`.
+- Web/local HTTPS: `https://localhost:7010`
+- Phone/LAN HTTP: `http://<YOUR-PC-IP>:5027`
+- Scalar API docs: `https://localhost:7010/scalar/v1`
 
----
+Update the database connection strings in `VeloChat.WebAPI/appsettings.json` when your local SQL Server or MongoDB configuration is different.
 
-### Real-Time SignalR Gateway (`ChatHub`)
-The WebSocket connection lifecycle is managed in [ChatHub.cs](file:///c:/repos/Velo/Velo-Chat/VeloChat.WebAPI/Hubs/ChatHub.cs).
-- **Group Scoping**: When a client switches rooms, it invokes `JoinRoom(roomId)` and `LeaveRoom(roomId)` to receive messages broadcasted to that chat scope.
-- **Message Pipeline**: Sending a message calls `SendMessage(roomId, content, type, mediaUrl)`. The hub persists the message to MongoDB and broadcasts it in real-time to all clients connected to that room.
-- **Typing Indicator**: Client inputs dispatch `SendTyping(roomId, isTyping)`. The hub broadcasts the status dynamically (`ReceiveTyping`) to notify other group members.
+## 2. Run the web client
 
----
+Open another terminal:
 
-## 3. Frontend Design (`VeloChat.Client`)
+```powershell
+cd VeloChat.Client
+npm install
+npm run dev
+```
 
-### Core Client Components
-- **`AuthContext.jsx`**: A React Context provider that wraps the app, maintains auth state, and parses token payloads to obtain claims (user ID, username, email).
-- **`api.js`**: An Axios wrapper that automatically appends the `Authorization: Bearer <token>` header to all backend HTTP calls. It features a response interceptor that queues requests if a `401` is received, requests token updates, and automatically retries the queued requests with the new tokens.
-- **`Register.jsx` / `Login.jsx`**: Glassmorphic interfaces using CSS backdrop-filter styling.
-- **`Chat.jsx`**: The main page layout containing:
-  - Sidebar: Profile header, Quick-action buttons (New Chat, Add Friend toggle), Search results list, active chat rooms, active friends, and incoming friend requests.
-  - Active Conversation Window: Message thread display, live typing notifications, message bubble components with attachment overlays, and the text editor.
+Open `http://localhost:5173`. The web client can use the backend's localhost HTTPS address.
 
----
+## 3. Test the mobile app on a physical phone
 
-## 4. Setup & Running Instructions
+The phone and development PC must be connected to the same Wi-Fi network.
 
-### Prerequisites
-- **.NET 10 SDK** installed.
-- **Node.js (v18+)** installed.
-- **MSSQL Server** running on `localhost`.
-- **MongoDB** running on `localhost:27017`.
+1. Find the PC's Wi-Fi IPv4 address:
 
-### Steps
-
-#### 1. Setup Database & Start Backend
-1. Navigate to the WebAPI directory:
    ```powershell
-   cd VeloChat.WebAPI
+   ipconfig
    ```
-2. Update the connection strings in `appsettings.json` if your local configurations differ.
-3. Apply database migrations to generate tables:
-   ```powershell
-   dotnet ef database update
-   ```
-4. Run the Web API:
-   ```powershell
-   dotnet run
-   ```
-   The backend runs on `https://localhost:7010`. Access the interactive Scalar API documentation at `https://localhost:7010/scalar/v1`.
 
-#### 2. Start Frontend Client
-1. Open a new terminal and navigate to the client directory:
+   Look under **Wireless LAN adapter Wi-Fi** for **IPv4 Address**.
+
+2. Create the mobile environment file:
+
    ```powershell
-   cd VeloChat.Client
+   cd VeloChat.Mobile
+   Copy-Item .env.example .env
    ```
-2. Install npm dependencies:
+
+3. Edit `VeloChat.Mobile/.env` using the PC's LAN IP. For example:
+
+   ```dotenv
+   EXPO_PUBLIC_API_URL=http://192.168.100.72:5027
+   ```
+
+   Do not use `localhost` here: on a physical phone, `localhost` means the phone itself.
+
+4. Install packages and start Expo in LAN mode:
+
    ```powershell
    npm install
+   npx expo start --clear --lan
    ```
-3. Start the local Vite server:
-   ```powershell
-   npm run dev
+
+5. Open the latest **Expo Go** on the phone and scan the QR code.
+
+6. If the app cannot reach the API, first open this URL in the phone browser:
+
+   ```text
+   http://<YOUR-PC-IP>:5027/scalar/v1
    ```
-4. Open your browser to `http://localhost:5173`.
+
+   If it does not open, allow the backend through Windows Firewall on private networks, confirm both devices are on the same Wi-Fi, and temporarily disconnect any VPN that isolates local traffic.
+
+## Mobile emulator API addresses
+
+| Test target | `EXPO_PUBLIC_API_URL` |
+| --- | --- |
+| Physical phone | `http://<YOUR-PC-IP>:5027` |
+| Android emulator | `http://10.0.2.2:5027` |
+| iOS simulator | `http://localhost:5027` |
+
+Restart Expo with `npx expo start --clear` after changing `.env`.
+
+## Why mobile uses HTTP during local development
+
+The web browser on the development PC can trust the ASP.NET localhost development certificate and use `https://localhost:7010`. A physical phone cannot use the PC's `localhost`, and it normally does not trust that development certificate for a LAN IP. Therefore the phone uses `http://<YOUR-PC-IP>:5027` for local testing. A deployed production API should use HTTPS with a valid public certificate.
+
+## Troubleshooting
+
+### “Project is incompatible with this version of Expo Go”
+
+- Update Expo Go from the App Store or Play Store.
+- Stop the Expo server and run `npx expo start --clear --lan` again.
+- Ensure you are opening this project's new QR code rather than an old project from Expo Go's recent list.
+
+### “Network request failed” on mobile
+
+- Check that the backend terminal shows `http://0.0.0.0:5027`.
+- Verify the `.env` IP is the PC's current Wi-Fi IPv4 address.
+- Test `http://<YOUR-PC-IP>:5027/scalar/v1` in the phone browser.
+- Check Wi-Fi client isolation, VPN settings, and Windows Firewall.
+
+## Useful source links
+
+- [`AppDbContext.cs`](./VeloChat.WebAPI/Data/AppDbContext.cs)
+- [`ChatHub.cs`](./VeloChat.WebAPI/Hubs/ChatHub.cs)
+- [Mobile-specific README](./VeloChat.Mobile/README.md)
