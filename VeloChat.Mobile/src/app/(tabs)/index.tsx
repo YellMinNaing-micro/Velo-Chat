@@ -65,7 +65,7 @@ export default function ChatsScreen() {
     const person = displayPerson(room);
     router.push({ pathname: '/chat/[id]', params: { id: room.id, name: room.isGroupChat ? room.roomName : person?.userName || room.roomName, avatar: person?.profilePictureUrl || '' } });
   };
-  const openFriend = async (friend: Friend) => { const response = await api.post<ChatRoom>(`/api/chatrooms/dm/${friend.id}`); openRoom(response.data); };
+  const openFriendProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } });
   const gradient = mode === 'dark' ? ['#513B33', '#2A211E', colors.background] as const : ['#FFF0E7', '#FCE4D9', colors.background] as const;
 
   return (
@@ -80,7 +80,7 @@ export default function ChatsScreen() {
             <View style={styles.header}><BrandLogo compact /><Text style={styles.headerTitle}>Chats</Text><Pressable onPress={() => router.push('/(tabs)/friends')} style={styles.iconButton}><Ionicons color={colors.text} name="create-outline" size={22} /></Pressable></View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.matches}>
               <Pressable onPress={() => router.push('/(tabs)/profile')} style={styles.match}><View><Avatar imageUrl={user?.profilePictureUrl} name={user?.fullName || user?.username} size={56} /><View style={styles.addStory}><Ionicons color="#FFFFFF" name="add" size={12} /></View></View><Text style={styles.matchName}>You</Text></Pressable>
-              {friends.map((friend) => <Pressable key={friend.id} onPress={() => openFriend(friend)} style={styles.match}><View style={styles.storyRing}><Avatar imageUrl={friend.profilePictureUrl} name={friend.userName} online={friend.isOnline} size={54} /></View><Text numberOfLines={1} style={styles.matchName}>{friend.userName}</Text></Pressable>)}
+              {friends.map((friend) => <Pressable key={friend.id} onPress={() => openFriendProfile(friend)} style={styles.match}><View style={styles.storyRing}><Avatar imageUrl={friend.profilePictureUrl} name={friend.userName} online={friend.isOnline} size={54} /></View><Text numberOfLines={1} style={styles.matchName}>{friend.userName}</Text></Pressable>)}
             </ScrollView>
             <View style={styles.search}><Ionicons color={colors.textMuted} name="search-outline" size={19} /><TextInput onChangeText={setQuery} placeholder="Search chats" placeholderTextColor={colors.textMuted} style={styles.searchInput} value={query} /><Pressable><Ionicons color={colors.textMuted} name="options-outline" size={19} /></Pressable></View>
           </LinearGradient>
