@@ -32,6 +32,10 @@ export type Friend = {
   friendshipStatus?: 'None' | 'Pending' | 'Accepted';
 };
 
+export type FriendProfile = Friend & {
+  friendsSince: string;
+};
+
 export type ChatMessage = {
   id: string;
   roomId: string;
