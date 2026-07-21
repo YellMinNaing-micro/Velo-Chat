@@ -66,7 +66,7 @@ export default function ChatsScreen() {
     router.push({ pathname: '/chat/[id]', params: { id: room.id, name: room.isGroupChat ? room.roomName : person?.userName || room.roomName, avatar: person?.profilePictureUrl || '', friendId: room.isGroupChat ? '' : person?.userId || '' } });
   };
   const openFriendProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } } as unknown as Href);
-  const gradient = mode === 'dark' ? ['#513B33', '#2A211E', colors.background] as const : ['#FFF0E7', '#FCE4D9', colors.background] as const;
+  const gradient = mode === 'dark' ? ['#173A36', '#142522', colors.background] as const : ['#DDF5F1', '#EDF8F5', colors.background] as const;
 
   return (
     <SafeAreaView edges={['top']} style={styles.safe}>
