@@ -6,11 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandLogo } from '@/components/brand-logo';
 import { FormField } from '@/components/form-field';
 import { PrimaryButton } from '@/components/primary-button';
-import { colors } from '@/constants/colors';
+import type { ThemeColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
+import { useAppTheme } from '@/context/theme-context';
 import { getApiError } from '@/services/api';
 
 export default function LoginScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,14 +50,14 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: { backgroundColor: colors.surface, flex: 1 }, flex: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', padding: 28 },
   hero: { gap: 10, marginBottom: 38 },
   title: { color: colors.text, fontSize: 36, fontWeight: '900', letterSpacing: -1.4, marginTop: 18 },
   subtitle: { color: colors.textMuted, fontSize: 16, lineHeight: 23 },
   form: { gap: 18 },
-  error: { backgroundColor: '#FFF0F1', borderRadius: 12, color: colors.danger, fontSize: 13, lineHeight: 18, padding: 13 },
+  error: { backgroundColor: colors.dangerSoft, borderRadius: 12, color: colors.danger, fontSize: 13, lineHeight: 18, padding: 13 },
   footer: { color: colors.textMuted, fontSize: 14, marginTop: 28, textAlign: 'center' },
   link: { color: colors.primaryDark, fontWeight: '800' },
 });
