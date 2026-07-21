@@ -13,6 +13,7 @@ namespace VeloChat.WebAPI.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
+[Tags("Chat Rooms")]
 public class ChatRoomsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -23,6 +24,8 @@ public class ChatRoomsController : ControllerBase
     }
 
     [HttpPost("create")]
+    [EndpointSummary("Create a chat room")]
+    [EndpointDescription("Creates a group or direct-message chat room and adds the authenticated user as its first participant.")]
     public async Task<IActionResult> CreateRoom([FromQuery] string? roomName, [FromQuery] bool isGroupChat)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -48,6 +51,8 @@ public class ChatRoomsController : ControllerBase
     }
 
     [HttpGet("my-rooms")]
+    [EndpointSummary("List the current user's chat rooms")]
+    [EndpointDescription("Returns every chat room joined by the authenticated user, including participant profile and online-status details.")]
     public async Task<IActionResult> GetMyRooms()
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -76,6 +81,8 @@ public class ChatRoomsController : ControllerBase
     }
 
     [HttpPost("{roomId}/join")]
+    [EndpointSummary("Join a chat room")]
+    [EndpointDescription("Adds the authenticated user to the specified chat room when they are not already a participant.")]
     public async Task<IActionResult> JoinRoom(Guid roomId)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -101,6 +108,8 @@ public class ChatRoomsController : ControllerBase
     }
 
     [HttpPost("dm/{friendId}")]
+    [EndpointSummary("Open a direct-message room")]
+    [EndpointDescription("Returns the existing direct-message room with an accepted friend, or creates one when no room exists.")]
     public async Task<IActionResult> GetOrCreateDirectMessageRoom(string friendId)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
