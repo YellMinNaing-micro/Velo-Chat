@@ -1,10 +1,13 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '@/constants/colors';
+import type { ThemeColors } from '@/constants/colors';
+import { useAppTheme } from '@/context/theme-context';
 
 type Props = { compact?: boolean; light?: boolean };
 
 export function BrandLogo({ compact = false, light = false }: Props) {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   return (
     <View style={styles.row}>
       <Image source={require('@/assets/images/velo-logo.png')} style={compact ? styles.smallLogo : styles.logo} />
@@ -13,7 +16,7 @@ export function BrandLogo({ compact = false, light = false }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   row: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   logo: { height: 48, width: 48 },
   smallLogo: { height: 34, width: 34 },
