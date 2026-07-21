@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect } from 'expo-router';
+import { Href, router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,7 +65,7 @@ export default function ChatsScreen() {
     const person = displayPerson(room);
     router.push({ pathname: '/chat/[id]', params: { id: room.id, name: room.isGroupChat ? room.roomName : person?.userName || room.roomName, avatar: person?.profilePictureUrl || '', friendId: room.isGroupChat ? '' : person?.userId || '' } });
   };
-  const openFriendProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } });
+  const openFriendProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } } as unknown as Href);
   const gradient = mode === 'dark' ? ['#513B33', '#2A211E', colors.background] as const : ['#FFF0E7', '#FCE4D9', colors.background] as const;
 
   return (
