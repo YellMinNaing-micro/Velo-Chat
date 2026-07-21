@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Href, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -89,7 +89,7 @@ export default function ConversationScreen() {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons color={colors.text} name="chevron-back" size={24} /></Pressable>
-        <Pressable disabled={!params.friendId} onPress={() => router.push({ pathname: '/friend/[id]', params: { id: params.friendId!, name: params.name || '', avatar: params.avatar || '' } })} style={styles.profileHeader}><Avatar imageUrl={params.avatar} name={params.name} online={status === 'Online'} size={42} /><View style={styles.headerText}><Text numberOfLines={1} style={styles.name}>{params.name || 'Conversation'}</Text><Text style={styles.status}>{typingName ? `${typingName} is typing…` : status}</Text></View></Pressable>
+        <Pressable disabled={!params.friendId} onPress={() => router.push({ pathname: '/friend/[id]', params: { id: params.friendId!, name: params.name || '', avatar: params.avatar || '' } } as unknown as Href)} style={styles.profileHeader}><Avatar imageUrl={params.avatar} name={params.name} online={status === 'Online'} size={42} /><View style={styles.headerText}><Text numberOfLines={1} style={styles.name}>{params.name || 'Conversation'}</Text><Text style={styles.status}>{typingName ? `${typingName} is typing…` : status}</Text></View></Pressable>
         <Pressable style={styles.more}><Ionicons color={colors.textMuted} name="ellipsis-horizontal" size={23} /></Pressable>
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0} style={styles.flex}>
