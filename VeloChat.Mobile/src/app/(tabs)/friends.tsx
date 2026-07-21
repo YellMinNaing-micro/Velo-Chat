@@ -5,7 +5,8 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
-import { colors } from '@/constants/colors';
+import type { ThemeColors } from '@/constants/colors';
+import { useAppTheme } from '@/context/theme-context';
 import { api, getApiError } from '@/services/api';
 import type { ChatRoom, Friend } from '@/types/api';
 
@@ -15,6 +16,8 @@ type PendingResponse = {
 };
 
 export default function FriendsScreen() {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<PendingResponse['incoming']>([]);
   const [results, setResults] = useState<Friend[]>([]);
@@ -73,7 +76,7 @@ export default function FriendsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: { backgroundColor: colors.surface, flex: 1 }, header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12 }, title: { color: colors.text, fontSize: 31, fontWeight: '900', letterSpacing: -1 }, subtitle: { color: colors.textMuted, fontSize: 13, marginTop: 3 },
   search: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 15, flexDirection: 'row', gap: 9, margin: 20, paddingHorizontal: 14 }, input: { color: colors.text, flex: 1, height: 50 }, notice: { color: colors.primaryDark, fontSize: 12, marginBottom: 10, paddingHorizontal: 20 }, requests: { borderBottomColor: colors.border, borderBottomWidth: 1, paddingBottom: 14 }, section: { color: colors.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 0.9, marginBottom: 6, paddingHorizontal: 20 },
   list: { paddingBottom: 24 }, person: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 70, paddingHorizontal: 20, paddingVertical: 9 }, personText: { flex: 1, gap: 3 }, name: { color: colors.text, fontSize: 15, fontWeight: '800' }, meta: { color: colors.textMuted, fontSize: 12 }, action: { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 9 }, actionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' }, secondary: { backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 9 }, secondaryText: { color: colors.primaryDark, fontSize: 12, fontWeight: '800' }, pending: { color: colors.textMuted, fontSize: 12, fontWeight: '700' }, circle: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 }, loader: { padding: 32 }, empty: { alignItems: 'center', gap: 5, padding: 42 }, emptyTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
