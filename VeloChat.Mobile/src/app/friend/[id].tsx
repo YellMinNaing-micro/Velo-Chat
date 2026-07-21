@@ -36,7 +36,7 @@ export default function FriendProfileScreen() {
     setOpeningChat(true); setError('');
     try {
       const response = await api.post<ChatRoom>(`/api/chatrooms/dm/${params.id}`);
-      router.replace({ pathname: '/chat/[id]', params: { id: response.data.id, name: username, avatar: avatar || '' } });
+      router.replace({ pathname: '/chat/[id]', params: { id: response.data.id, name: username, avatar: avatar || '', friendId: params.id } });
     } catch (reason) { setError(getApiError(reason, 'Unable to open this chat.')); setOpeningChat(false); }
   };
   const gradient = mode === 'dark' ? ['#63483E', '#2A211E', colors.background] as const : ['#FFE2D2', '#FFF2EA', colors.background] as const;
