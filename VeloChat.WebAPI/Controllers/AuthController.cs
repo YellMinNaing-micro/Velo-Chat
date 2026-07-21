@@ -13,6 +13,7 @@ namespace VeloChat.WebAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Tags("Authentication")]
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -30,6 +31,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [EndpointSummary("Register a new user")]
+    [EndpointDescription("Creates a new user account using a unique email address and username.")]
     public async Task<IActionResult> Register([FromBody] RegisterDto model)
     {
         ApplicationUser? userExists = await _userManager.FindByEmailAsync(model.Email);
@@ -65,6 +68,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EndpointSummary("Log in a user")]
+    [EndpointDescription("Authenticates a user with an email address or username and returns access and refresh tokens.")]
     public async Task<IActionResult> Login([FromBody] LoginDto model)
     {
         ApplicationUser? user = await _userManager.FindByEmailAsync(model.Email) ?? await _userManager.FindByNameAsync(model.Email);
@@ -88,6 +93,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [EndpointSummary("Refresh authentication tokens")]
+    [EndpointDescription("Validates an expired access token and a valid refresh token, then issues a new token pair.")]
     public async Task<IActionResult> Refresh([FromBody] TokenDto model)
     {
         ClaimsPrincipal? principal = _tokenService.GetPrincipalFromExpiredToken(model.AccessToken);
@@ -122,6 +129,8 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("revoke")]
+    [EndpointSummary("Revoke the current user's token")]
+    [EndpointDescription("Invalidates the authenticated user's refresh token and marks the user as offline.")]
     public async Task<IActionResult> Revoke()
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
