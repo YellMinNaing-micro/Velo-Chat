@@ -20,7 +20,7 @@ const Chat = () => {
   const [newRoomName, setNewRoomName] = useState('');
   const [isGroupChat, setIsGroupChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('velo-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('velo-theme') || 'light');
 
   // Friend System states
   const [friends, setFriends] = useState([]);
@@ -345,7 +345,7 @@ const Chat = () => {
       overflow: 'hidden'
     }}>
       <nav className="chat-rail" aria-label="Primary navigation">
-        <div className="brand-mark" title="Velo Chat">V</div>
+        <div className="brand-mark" title="Velo Chat"><img src="/velo-logo.svg" alt="Velo Chat" /></div>
         <div className="rail-actions">
           <button className="rail-button active" title="Chats"><MessagesSquare size={20} /></button>
           <button className="rail-button" title="Add friend" onClick={() => { setShowAddFriend(true); setShowCreateRoom(false); }}><Users size={20} /></button>
@@ -757,7 +757,7 @@ const Chat = () => {
             fontSize: '11px',
             color: 'var(--text-muted)'
           }}>
-            VeloChat v1.0.0
+            Velo Chat v1.0.0
           </div>
 
         </div>
