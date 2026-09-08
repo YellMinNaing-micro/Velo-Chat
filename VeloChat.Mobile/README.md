@@ -28,19 +28,19 @@ Expo SDK 54 / React Native client for the existing Velo Chat API. SDK 54 is used
    - iOS simulator: `http://localhost:5027`
    - Physical phone: `http://<computer-LAN-IP>:5027`
 
-3. Install and launch:
+3. From the repository root, install all workspace packages and launch:
 
    ```powershell
-   npm install
-   npm run android
+   pnpm install
+   pnpm android
    ```
 
-Use `npm run ios` on macOS or `npm run web` for the browser target. Check the native splash in a release/internal build because Expo Go does not render the production splash screen exactly.
+From `VeloChat.Mobile`, use `pnpm ios` on macOS or `pnpm web` for the browser target. Check the native splash in a release/internal build because Expo Go does not render the production splash screen exactly.
 
 ## Quality checks
 
 ```powershell
-npm run typecheck
-npm run lint
-npx expo export --platform web
+pnpm typecheck
+pnpm lint
+pnpm exec expo export --platform web
 ```
