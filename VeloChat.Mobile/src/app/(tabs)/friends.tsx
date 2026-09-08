@@ -8,7 +8,7 @@ import { Avatar } from '@/components/avatar';
 import type { ThemeColors } from '@/constants/colors';
 import { useAppTheme } from '@/context/theme-context';
 import { api, getApiError } from '@/services/api';
-import type { ChatRoom, Friend } from '@/types/api';
+import { API_ROUTES, type ChatRoom, type Friend } from '@velo/shared';
 
 type PendingResponse = {
   incoming: { id: string; sender: Friend }[];
@@ -28,8 +28,8 @@ export default function FriendsScreen() {
   const load = useCallback(async () => {
     try {
       const [friendResponse, pendingResponse] = await Promise.all([
-        api.get<Friend[]>('/api/friendships/list'),
-        api.get<PendingResponse>('/api/friendships/pending'),
+        api.get<Friend[]>(API_ROUTES.friendships.list),
+        api.get<PendingResponse>(API_ROUTES.friendships.pending),
       ]);
       setFriends(friendResponse.data);
       setIncoming(pendingResponse.data.incoming || []);
@@ -41,19 +41,19 @@ export default function FriendsScreen() {
   useEffect(() => {
     if (!query.trim()) return;
     const timer = setTimeout(async () => {
-      try { const response = await api.get<Friend[]>('/api/friendships/search', { params: { query: query.trim() } }); setResults(response.data); }
+      try { const response = await api.get<Friend[]>(API_ROUTES.friendships.search, { params: { query: query.trim() } }); setResults(response.data); }
       catch (error) { setMessage(getApiError(error, 'Search failed.')); }
     }, 350);
     return () => clearTimeout(timer);
   }, [query]);
 
-  const accept = async (friendId: string) => { await api.post(`/api/friendships/accept/${friendId}`); await load(); };
+  const accept = async (friendId: string) => { await api.post(API_ROUTES.friendships.accept(friendId)); await load(); };
   const add = async (friendId: string) => {
-    try { await api.post(`/api/friendships/request/${friendId}`); setResults((items) => items.map((item) => item.id === friendId ? { ...item, friendshipStatus: 'Pending' } : item)); setMessage('Friend request sent.'); }
+    try { await api.post(API_ROUTES.friendships.request(friendId)); setResults((items) => items.map((item) => item.id === friendId ? { ...item, friendshipStatus: 'Pending' } : item)); setMessage('Friend request sent.'); }
     catch (error) { setMessage(getApiError(error, 'Unable to send request.')); }
   };
   const chat = async (friend: Friend) => {
-    const response = await api.post<ChatRoom>(`/api/chatrooms/dm/${friend.id}`);
+    const response = await api.post<ChatRoom>(API_ROUTES.chatRooms.directMessage(friend.id));
     router.push({ pathname: '/chat/[id]', params: { id: response.data.id, name: friend.userName, avatar: friend.profilePictureUrl || '', friendId: friend.id } });
   };
   const openProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } } as unknown as Href);
