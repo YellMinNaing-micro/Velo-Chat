@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_ROUTES } from '@velo/shared';
 import { CheckCircle2, LockKeyhole, Save, UserRound, X } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +37,7 @@ const ProfileSettings = ({ open, onClose }) => {
     setSaving(true);
     setStatus({ type: '', message: '' });
     try {
-      const response = await api.put('/api/auth/me', profile);
+      const response = await api.put(API_ROUTES.auth.me, profile);
       updateUser(response.data);
       setStatus({ type: 'success', message: 'Profile updated successfully.' });
     } catch (error) {
@@ -56,7 +57,7 @@ const ProfileSettings = ({ open, onClose }) => {
 
     setSaving(true);
     try {
-      await api.post('/api/auth/change-password', {
+      await api.post(API_ROUTES.auth.changePassword, {
         oldPassword: passwords.oldPassword,
         newPassword: passwords.newPassword,
       });
