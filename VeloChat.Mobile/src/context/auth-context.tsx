@@ -2,7 +2,7 @@ import { createContext, PropsWithChildren, useCallback, useContext, useEffect, u
 
 import { api, refreshSession, setSessionExpiredHandler } from '@/services/api';
 import { sessionStorage } from '@/services/session-storage';
-import type { TokenPair, UserProfile } from '@/types/api';
+import { API_ROUTES, type TokenPair, type UserProfile } from '@velo/shared';
 
 type RegisterInput = {
   username: string;
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const loadProfile = useCallback(async () => {
-    const response = await api.get<UserProfile>('/api/auth/me');
+    const response = await api.get<UserProfile>(API_ROUTES.auth.me);
     setUser(response.data);
     return response.data;
   }, []);
@@ -63,13 +63,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [clearSession, loadProfile]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const response = await api.post<TokenPair>('/api/auth/login', { email, password });
+    const response = await api.post<TokenPair>(API_ROUTES.auth.login, { email, password });
     await sessionStorage.save(response.data);
     await loadProfile();
   }, [loadProfile]);
 
   const register = useCallback(async (input: RegisterInput) => {
-    await api.post('/api/auth/register', {
+    await api.post(API_ROUTES.auth.register, {
       ...input,
       fullName: input.fullName || null,
       profilePictureUrl: input.profilePictureUrl || null,
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const logout = useCallback(async () => {
-    try { await api.post('/api/auth/revoke'); } catch { /* local logout must still complete */ }
+    try { await api.post(API_ROUTES.auth.revoke); } catch { /* local logout must still complete */ }
     await clearSession();
   }, [clearSession]);
 
