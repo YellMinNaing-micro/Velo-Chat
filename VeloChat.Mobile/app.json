@@ -39,6 +39,7 @@
       "expo-secure-store"
     ],
     "experiments": {
+      "autolinkingModuleResolution": true,
       "typedRoutes": true,
       "reactCompiler": true
     }
