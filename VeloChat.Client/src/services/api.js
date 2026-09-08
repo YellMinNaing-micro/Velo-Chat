@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '@velo/shared';
 
 const API_BASE_URL = 'https://localhost:7010';
 
@@ -28,7 +29,7 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // Avoid infinite loop if refresh token endpoint fails
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/api/auth/refresh')) {
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes(API_ROUTES.auth.refresh)) {
       originalRequest._retry = true;
 
       try {
@@ -40,7 +41,7 @@ api.interceptors.response.use(
         }
 
         // Request new tokens
-        const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
+        const response = await axios.post(`${API_BASE_URL}${API_ROUTES.auth.refresh}`, {
           accessToken,
           refreshToken,
         });
