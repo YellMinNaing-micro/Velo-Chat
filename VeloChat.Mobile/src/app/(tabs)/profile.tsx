@@ -11,7 +11,7 @@ import type { ThemeColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
 import { api, getApiError } from '@/services/api';
-import type { UserProfile } from '@/types/api';
+import { API_ROUTES, type UserProfile } from '@velo/shared';
 
 type Panel = 'view' | 'edit' | 'password';
 
@@ -38,7 +38,7 @@ export default function ProfileScreen() {
   const save = async () => {
     setSaving(true); setMessage('');
     try {
-      const response = await api.put<UserProfile>('/api/auth/me', form);
+      const response = await api.put<UserProfile>(API_ROUTES.auth.me, form);
       updateProfile(response.data);
       setPanel('view');
       setMessage('Profile updated successfully.');
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
     if (passwords.newPassword !== passwords.confirmPassword) return setMessage('New passwords do not match.');
     setSaving(true); setMessage('');
     try {
-      await api.post('/api/auth/change-password', { oldPassword: passwords.oldPassword, newPassword: passwords.newPassword });
+      await api.post(API_ROUTES.auth.changePassword, { oldPassword: passwords.oldPassword, newPassword: passwords.newPassword });
       setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setPanel('view');
       setMessage('Password changed successfully.');
