@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
 import { API_BASE_URL, api, getApiError } from '@/services/api';
 import { sessionStorage } from '@/services/session-storage';
-import type { ChatMessage } from '@/types/api';
+import { API_ROUTES, SIGNALR_EVENTS, type ChatMessage } from '@velo/shared';
 
 export default function ConversationScreen() {
   const { colors, mode } = useAppTheme();
@@ -37,7 +37,7 @@ export default function ConversationScreen() {
       .build();
     connectionRef.current = connection;
 
-    connection.on('ReceiveMessage', (message: ChatMessage) => {
+    connection.on(SIGNALR_EVENTS.receiveMessage, (message: ChatMessage) => {
       if (message.roomId === params.id) setMessages((items) => items.some((item) => item.id === message.id) ? items : [...items, message]);
     });
     connection.on('UserTyping', (info: { roomId: string; userId: string; username: string; isTyping: boolean }) => {
@@ -49,7 +49,7 @@ export default function ConversationScreen() {
 
     (async () => {
       try {
-        const history = await api.get<ChatMessage[]>(`/api/messages/room/${params.id}`);
+        const history = await api.get<ChatMessage[]>(API_ROUTES.messages.room(params.id));
         if (active) setMessages(history.data);
         await connection.start();
         await connection.invoke('JoinRoom', params.id);
