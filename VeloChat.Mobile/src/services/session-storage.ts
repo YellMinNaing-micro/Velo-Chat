@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-import type { TokenPair } from '@/types/api';
+import type { TokenPair } from '@velo/shared';
 
 const ACCESS_TOKEN_KEY = 'velo.accessToken';
 const REFRESH_TOKEN_KEY = 'velo.refreshToken';
