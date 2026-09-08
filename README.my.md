@@ -59,14 +59,13 @@ dotnet run --project VeloChat.WebAPI --launch-profile https
 
 Local SQL Server သို့မဟုတ် MongoDB setting မတူပါက `VeloChat.WebAPI/appsettings.json` ထဲက connection string များကို ပြင်ပါ။
 
-## ၂။ Web client စမ်းသပ်ခြင်း
+## ၂။ Workspace package များထည့်ပြီး Web client စမ်းသပ်ခြင်း
 
-Terminal အသစ်တစ်ခုမှာ run ပါ။
+Repository root မှာ Web နှင့် Mobile dependency များကို တစ်ကြိမ်တည်းထည့်ပြီး Vite ကိုဖွင့်ပါ။
 
 ```powershell
-cd VeloChat.Client
-npm install
-npm run dev
+pnpm install
+pnpm web
 ```
 
 Browser မှာ `http://localhost:5173` ကိုဖွင့်ပါ။ Web client အတွက် backend ကို `https://localhost:7010` ဖြင့် သုံးနိုင်သည်။
@@ -86,8 +85,7 @@ Browser မှာ `http://localhost:5173` ကိုဖွင့်ပါ။ Web 
 2. Mobile environment file တည်ဆောက်ပါ။
 
    ```powershell
-   cd VeloChat.Mobile
-   Copy-Item .env.example .env
+   Copy-Item VeloChat.Mobile/.env.example VeloChat.Mobile/.env
    ```
 
 3. `VeloChat.Mobile/.env` တွင် PC ၏ LAN IP ကိုထည့်ပါ။ ဥပမာ —
@@ -101,8 +99,7 @@ Browser မှာ `http://localhost:5173` ကိုဖွင့်ပါ။ Web 
 4. Package များထည့်ပြီး Expo ကို LAN mode ဖြင့်ဖွင့်ပါ။
 
    ```powershell
-   npm install
-   npx expo start --clear --lan
+   pnpm mobile --clear --lan
    ```
 
 5. ဖုန်းထဲက နောက်ဆုံး version **Expo Go** ကိုဖွင့်ပြီး QR code ကို scan ပါ။
@@ -134,7 +131,7 @@ Development PC ပေါ်က web browser သည် ASP.NET localhost developme
 ### “Project is incompatible with this version of Expo Go”
 
 - App Store သို့မဟုတ် Play Store မှ Expo Go ကို update လုပ်ပါ။
-- Expo server ကိုပိတ်ပြီး `npx expo start --clear --lan` ပြန် run ပါ။
+- Expo server ကိုပိတ်ပြီး repository root မှ `pnpm mobile --clear --lan` ပြန် run ပါ။
 - Expo Go recent list ထဲက project အဟောင်းမဖွင့်ဘဲ လက်ရှိ terminal မှ QR code အသစ်ကို scan ပါ။
 
 ### Mobile တွင် “Network request failed”
