@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_ROUTES, SIGNALR_EVENTS } from '@velo/shared';
 import { useAuth } from '../context/AuthContext';
 import api, { API_BASE_URL } from '../services/api';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -50,13 +51,13 @@ const Chat = () => {
   // 1. Fetch Rooms & Friends
   const fetchData = async () => {
     try {
-      const roomsResponse = await api.get('/api/chatrooms/my-rooms');
+      const roomsResponse = await api.get(API_ROUTES.chatRooms.mine);
       setRooms(roomsResponse.data);
 
-      const friendsResponse = await api.get('/api/friendships/list');
+      const friendsResponse = await api.get(API_ROUTES.friendships.list);
       setFriends(friendsResponse.data);
 
-      const pendingResponse = await api.get('/api/friendships/pending');
+      const pendingResponse = await api.get(API_ROUTES.friendships.pending);
       setPendingRequests(pendingResponse.data);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -65,7 +66,7 @@ const Chat = () => {
 
   const handleAcceptFriendRequest = async (senderId) => {
     try {
-      await api.post(`/api/friendships/accept/${senderId}`);
+      await api.post(API_ROUTES.friendships.accept(senderId));
       await fetchData();
     } catch (err) {
       console.error('Failed to accept friend request:', err);
@@ -99,7 +100,7 @@ const Chat = () => {
       .withAutomaticReconnect()
       .build();
 
-    connection.on('ReceiveMessage', (message) => {
+    connection.on(SIGNALR_EVENTS.receiveMessage, (message) => {
       // If message belongs to active room, append to state
       if (activeRoomRef.current && message.roomId === activeRoomRef.current.id) {
         setMessages((prev) => [...prev, message]);
@@ -167,7 +168,7 @@ const Chat = () => {
 
     try {
       // Load historical messages from MongoDB
-      const response = await api.get(`/api/messages/room/${room.id}`);
+      const response = await api.get(API_ROUTES.messages.room(room.id));
       setMessages(response.data);
     } catch (err) {
       console.error('Error switching room:', err);
@@ -176,7 +177,7 @@ const Chat = () => {
 
   const handleStartDirectChat = async (friendId) => {
     try {
-      const response = await api.post(`/api/chatrooms/dm/${friendId}`);
+      const response = await api.post(API_ROUTES.chatRooms.directMessage(friendId));
       const room = response.data;
       
       // Add to rooms list if it doesn't exist
@@ -234,7 +235,7 @@ const Chat = () => {
 
     try {
       const response = await api.post(
-        `/api/chatrooms/create?roomName=${encodeURIComponent(newRoomName)}&isGroupChat=${isGroupChat}`
+        `${API_ROUTES.chatRooms.create}?roomName=${encodeURIComponent(newRoomName)}&isGroupChat=${isGroupChat}`
       );
       setRooms((prev) => [...prev, response.data]);
       setNewRoomName('');
@@ -259,7 +260,7 @@ const Chat = () => {
 
     setSearchLoading(true);
     try {
-      const response = await api.get(`/api/friendships/search?query=${encodeURIComponent(q)}`);
+      const response = await api.get(`${API_ROUTES.friendships.search}?query=${encodeURIComponent(q)}`);
       setSearchResults(response.data);
     } catch (err) {
       console.error('Error searching users:', err);
@@ -273,7 +274,7 @@ const Chat = () => {
     setFriendError('');
     setFriendSuccess('');
     try {
-      await api.post(`/api/friendships/request/${userId}`);
+      await api.post(API_ROUTES.friendships.request(userId));
       setFriendSuccess('Friend request sent!');
       // Update the search results to show pending status
       setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, friendshipStatus: 'Pending' } : u));
