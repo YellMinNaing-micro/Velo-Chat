@@ -11,7 +11,7 @@ import type { ThemeColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
 import { api } from '@/services/api';
-import type { ChatMessage, ChatRoom, Friend, Participant } from '@/types/api';
+import { API_ROUTES, type ChatMessage, type ChatRoom, type Friend, type Participant } from '@velo/shared';
 
 type ChatFilter = 'all' | 'online' | 'groups';
 
@@ -41,11 +41,11 @@ export default function ChatsScreen() {
     if (pull) setRefreshing(true);
     try {
       const [roomResponse, friendResponse] = await Promise.all([
-        api.get<ChatRoom[]>('/api/chatrooms/my-rooms'), api.get<Friend[]>('/api/friendships/list'),
+        api.get<ChatRoom[]>(API_ROUTES.chatRooms.mine), api.get<Friend[]>(API_ROUTES.friendships.list),
       ]);
       setRooms(roomResponse.data); setFriends(friendResponse.data);
       const messages = await Promise.all(roomResponse.data.map(async (room) => {
-        try { const response = await api.get<ChatMessage[]>(`/api/messages/room/${room.id}`); return [room.id, response.data.at(-1)] as const; }
+        try { const response = await api.get<ChatMessage[]>(API_ROUTES.messages.room(room.id)); return [room.id, response.data.at(-1)] as const; }
         catch { return [room.id, undefined] as const; }
       }));
       setLatest(Object.fromEntries(messages));
