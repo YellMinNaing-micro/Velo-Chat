@@ -1,0 +1,13 @@
+{
+  "name": "velo-chat",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "web": "pnpm --filter velochat-client dev",
+    "mobile": "pnpm --filter velochat.mobile start",
+    "android": "pnpm --filter velochat.mobile android",
+    "build": "pnpm --filter velochat-client build",
+    "lint": "pnpm --recursive --if-present lint",
+    "typecheck": "pnpm --recursive --if-present typecheck"
+  }
+}
