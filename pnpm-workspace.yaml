@@ -1,0 +1,8 @@
+packages:
+  - VeloChat.Client
+  - VeloChat.Mobile
+  - packages/*
+
+# Expo SDK 54 supports isolated installs, but hoisting remains the most
+# compatible option for React Native libraries during this migration.
+nodeLinker: hoisted
