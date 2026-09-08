@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { API_ROUTES } from '@velo/shared';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -29,7 +30,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await api.post('/api/auth/login', { email, password });
+      const response = await api.post(API_ROUTES.auth.login, { email, password });
       const { accessToken, refreshToken } = response.data;
       
       localStorage.setItem('accessToken', accessToken);
@@ -56,7 +57,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password, profilePictureUrl, fullName) => {
     try {
-      await api.post('/api/auth/register', {
+      await api.post(API_ROUTES.auth.register, {
         username,
         email,
         password,
@@ -70,7 +71,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/api/auth/revoke');
+      await api.post(API_ROUTES.auth.revoke);
     } catch (e) {
       console.warn('Revoke token failed or was already revoked:', e);
     } finally {
@@ -90,7 +91,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    const response = await api.get('/api/auth/me');
+    const response = await api.get(API_ROUTES.auth.me);
     updateUser(response.data);
     return response.data;
   }, [updateUser]);
