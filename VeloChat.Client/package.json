@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@velo/shared": "workspace:*",
     "@microsoft/signalr": "^10.0.0",
     "axios": "^1.18.1",
     "lucide-react": "^1.21.0",
