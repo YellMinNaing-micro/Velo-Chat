@@ -9,7 +9,7 @@ import { Avatar } from '@/components/avatar';
 import type { ThemeColors } from '@/constants/colors';
 import { useAppTheme } from '@/context/theme-context';
 import { api, getApiError } from '@/services/api';
-import type { ChatRoom, FriendProfile } from '@/types/api';
+import { API_ROUTES, type ChatRoom, type FriendProfile } from '@velo/shared';
 
 export default function FriendProfileScreen() {
   const params = useLocalSearchParams<{ id: string; name?: string; fullName?: string; avatar?: string }>();
@@ -22,7 +22,7 @@ export default function FriendProfileScreen() {
 
   useEffect(() => {
     let active = true;
-    api.get<FriendProfile>(`/api/friendships/profile/${params.id}`)
+    api.get<FriendProfile>(API_ROUTES.friendships.profile(params.id))
       .then((response) => { if (active) setProfile(response.data); })
       .catch((reason) => { if (active) setError(getApiError(reason, 'Unable to load this profile.')); })
       .finally(() => { if (active) setLoading(false); });
@@ -35,7 +35,7 @@ export default function FriendProfileScreen() {
   const openChat = async () => {
     setOpeningChat(true); setError('');
     try {
-      const response = await api.post<ChatRoom>(`/api/chatrooms/dm/${params.id}`);
+      const response = await api.post<ChatRoom>(API_ROUTES.chatRooms.directMessage(params.id));
       router.replace({ pathname: '/chat/[id]', params: { id: response.data.id, name: username, avatar: avatar || '', friendId: params.id } });
     } catch (reason) { setError(getApiError(reason, 'Unable to open this chat.')); setOpeningChat(false); }
   };
