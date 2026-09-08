@@ -1,8 +1,8 @@
+import { API_ROUTES, type TokenPair } from '@velo/shared';
 import axios, { AxiosError, create, InternalAxiosRequestConfig, isAxiosError } from 'axios';
 import { Platform } from 'react-native';
 
 import { sessionStorage } from './session-storage';
-import type { TokenPair } from '@/types/api';
 
 const emulatorDefault = Platform.OS === 'android'
   ? 'http://10.0.2.2:5027'
@@ -27,7 +27,7 @@ export async function refreshSession(tokens?: TokenPair): Promise<TokenPair> {
   const current = tokens ?? await sessionStorage.read();
   if (!current) throw new Error('No saved session');
 
-  const response = await axios.post<TokenPair>(`${API_BASE_URL}/api/auth/refresh`, current, {
+  const response = await axios.post<TokenPair>(`${API_BASE_URL}${API_ROUTES.auth.refresh}`, current, {
     headers: { 'Content-Type': 'application/json' },
     timeout: 15000,
   });
@@ -45,7 +45,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const request = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
-    const isRefreshRequest = request?.url?.includes('/api/auth/refresh');
+    const isRefreshRequest = request?.url?.includes(API_ROUTES.auth.refresh);
 
     if (error.response?.status !== 401 || !request || request._retry || isRefreshRequest) {
       return Promise.reject(error);
