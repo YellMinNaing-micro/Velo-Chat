@@ -59,14 +59,13 @@ This launch profile exposes both endpoints:
 
 Update the database connection strings in `VeloChat.WebAPI/appsettings.json` when your local SQL Server or MongoDB configuration is different.
 
-## 2. Run the web client
+## 2. Install workspace packages and run the web client
 
-Open another terminal:
+From the repository root, install all web and mobile dependencies once, then start Vite:
 
 ```powershell
-cd VeloChat.Client
-npm install
-npm run dev
+pnpm install
+pnpm web
 ```
 
 Open `http://localhost:5173`. The web client can use the backend's localhost HTTPS address.
@@ -86,8 +85,7 @@ The phone and development PC must be connected to the same Wi-Fi network.
 2. Create the mobile environment file:
 
    ```powershell
-   cd VeloChat.Mobile
-   Copy-Item .env.example .env
+   Copy-Item VeloChat.Mobile/.env.example VeloChat.Mobile/.env
    ```
 
 3. Edit `VeloChat.Mobile/.env` using the PC's LAN IP. For example:
@@ -101,8 +99,7 @@ The phone and development PC must be connected to the same Wi-Fi network.
 4. Install packages and start Expo in LAN mode:
 
    ```powershell
-   npm install
-   npx expo start --clear --lan
+   pnpm mobile --clear --lan
    ```
 
 5. Open the latest **Expo Go** on the phone and scan the QR code.
@@ -134,7 +131,7 @@ The web browser on the development PC can trust the ASP.NET localhost developmen
 ### “Project is incompatible with this version of Expo Go”
 
 - Update Expo Go from the App Store or Play Store.
-- Stop the Expo server and run `npx expo start --clear --lan` again.
+- Stop the Expo server and run `pnpm mobile --clear --lan` again from the repository root.
 - Ensure you are opening this project's new QR code rather than an old project from Expo Go's recent list.
 
 ### “Network request failed” on mobile
