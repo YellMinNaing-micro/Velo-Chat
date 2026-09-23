@@ -11,6 +11,8 @@ export const API_ROUTES = {
     mine: '/api/chatrooms/my-rooms',
     directMessage: (userId: string) => `/api/chatrooms/dm/${userId}`,
     create: '/api/chatrooms/create',
+    addMember: (roomId: string, friendId: string) => `/api/chatrooms/${roomId}/members/${friendId}`,
+    markRead: (roomId: string) => `/api/chatrooms/${roomId}/read`,
   },
   friendships: {
     list: '/api/friendships/list',
@@ -21,6 +23,7 @@ export const API_ROUTES = {
     profile: (userId: string) => `/api/friendships/profile/${userId}`,
   },
   messages: {
-    room: (roomId: string) => `/api/messages/room/${roomId}`,
+    room: (roomId: string, before?: string, limit = 50) =>
+      `/api/messages/room/${roomId}?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ''}`,
   },
 } as const;
