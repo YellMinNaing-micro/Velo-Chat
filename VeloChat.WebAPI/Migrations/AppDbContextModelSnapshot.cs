@@ -301,6 +301,9 @@ namespace VeloChat.WebAPI.Migrations
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("LastReadAt")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("RoomId", "UserId");
 
                     b.HasIndex("UserId");
