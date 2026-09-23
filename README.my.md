@@ -123,3 +123,7 @@ pnpm build
 pnpm typecheck
 pnpm lint
 ```
+
+## License
+
+VeloChat ကို [MIT License](./LICENSE) ဖြင့် အသုံးပြုနိုင်သည်။
