@@ -10,7 +10,7 @@ import { BrandLogo } from '@/components/brand-logo';
 import type { ThemeColors } from '@/constants/colors';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
-import { api } from '@/services/api';
+import { api, getApiError } from '@/services/api';
 import { API_ROUTES, type ChatMessage, type ChatRoom, type Friend, type Participant } from '@velo/shared';
 
 type ChatFilter = 'all' | 'online' | 'groups';
@@ -33,6 +33,10 @@ export default function ChatsScreen() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [latest, setLatest] = useState<Record<string, ChatMessage | undefined>>({});
   const [query, setQuery] = useState('');
+  const [showGroupForm, setShowGroupForm] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupFriendIds, setGroupFriendIds] = useState<string[]>([]);
+  const [groupError, setGroupError] = useState('');
   const [filter, setFilter] = useState<ChatFilter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,7 +49,7 @@ export default function ChatsScreen() {
       ]);
       setRooms(roomResponse.data); setFriends(friendResponse.data);
       const messages = await Promise.all(roomResponse.data.map(async (room) => {
-        try { const response = await api.get<ChatMessage[]>(API_ROUTES.messages.room(room.id)); return [room.id, response.data.at(-1)] as const; }
+        try { const response = await api.get<ChatMessage[]>(API_ROUTES.messages.room(room.id, undefined, 1)); return [room.id, response.data.at(-1)] as const; }
         catch { return [room.id, undefined] as const; }
       }));
       setLatest(Object.fromEntries(messages));
@@ -63,9 +67,23 @@ export default function ChatsScreen() {
 
   const openRoom = (room: ChatRoom) => {
     const person = displayPerson(room);
-    router.push({ pathname: '/chat/[id]', params: { id: room.id, name: room.isGroupChat ? room.roomName : person?.userName || room.roomName, avatar: person?.profilePictureUrl || '', friendId: room.isGroupChat ? '' : person?.userId || '' } });
+    router.push({ pathname: '/chat/[id]', params: { id: room.id, name: room.isGroupChat ? room.roomName : person?.userName || room.roomName, avatar: person?.profilePictureUrl || '', friendId: room.isGroupChat ? '' : person?.userId || '', group: String(room.isGroupChat) } });
   };
   const openFriendProfile = (friend: Friend) => router.push({ pathname: '/friend/[id]', params: { id: friend.id, name: friend.userName, fullName: friend.fullName || '', avatar: friend.profilePictureUrl || '' } } as unknown as Href);
+
+  const createGroup = async () => {
+    if (!groupName.trim() || !groupFriendIds.length) {
+      setGroupError('Enter a name and choose at least one friend.');
+      return;
+    }
+    try {
+      const response = await api.post<ChatRoom>(`${API_ROUTES.chatRooms.create}?roomName=${encodeURIComponent(groupName.trim())}&isGroupChat=true`);
+      await Promise.all(groupFriendIds.map((friendId) => api.post(API_ROUTES.chatRooms.addMember(response.data.id, friendId))));
+      setShowGroupForm(false); setGroupName(''); setGroupFriendIds([]); setGroupError('');
+      await load();
+      router.push({ pathname: '/chat/[id]', params: { id: response.data.id, name: response.data.roomName, group: 'true' } });
+    } catch (err) { setGroupError(getApiError(err, 'Unable to create group.')); }
+  };
   const gradient = mode === 'dark' ? ['#173A36', '#142522', colors.background] as const : ['#DDF5F1', '#EDF8F5', colors.background] as const;
 
   return (
@@ -77,13 +95,27 @@ export default function ChatsScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={<>
           <LinearGradient colors={gradient} style={styles.hero}>
-            <View style={styles.header}><BrandLogo compact /><Text style={styles.headerTitle}>Chats</Text><Pressable onPress={() => router.push('/(tabs)/friends')} style={styles.iconButton}><Ionicons color={colors.text} name="create-outline" size={22} /></Pressable></View>
+            <View style={styles.header}><BrandLogo compact /><Text style={styles.headerTitle}>Chats</Text><Pressable onPress={() => setShowGroupForm((value) => !value)} style={styles.iconButton}><Ionicons color={colors.text} name="people-outline" size={22} /></Pressable></View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.matches}>
               <Pressable onPress={() => router.push('/(tabs)/profile')} style={styles.match}><View><Avatar imageUrl={user?.profilePictureUrl} name={user?.fullName || user?.username} size={56} /><View style={styles.addStory}><Ionicons color="#FFFFFF" name="add" size={12} /></View></View><Text style={styles.matchName}>You</Text></Pressable>
               {friends.map((friend) => <Pressable key={friend.id} onPress={() => openFriendProfile(friend)} style={styles.match}><View style={styles.storyRing}><Avatar imageUrl={friend.profilePictureUrl} name={friend.userName} online={friend.isOnline} size={54} /></View><Text numberOfLines={1} style={styles.matchName}>{friend.userName}</Text></Pressable>)}
             </ScrollView>
             <View style={styles.search}><Ionicons color={colors.textMuted} name="search-outline" size={19} /><TextInput onChangeText={setQuery} placeholder="Search chats" placeholderTextColor={colors.textMuted} style={styles.searchInput} value={query} /><Pressable><Ionicons color={colors.textMuted} name="options-outline" size={19} /></Pressable></View>
           </LinearGradient>
+          {showGroupForm && <View style={styles.groupForm}>
+            <Text style={styles.sectionTitle}>New group</Text>
+            <TextInput value={groupName} onChangeText={setGroupName} placeholder="Group name" placeholderTextColor={colors.textMuted} style={styles.groupNameInput} />
+            <Text style={styles.muted}>Choose friends</Text>
+            <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+              {friends.map((friend) => <Pressable key={friend.id}
+                onPress={() => setGroupFriendIds((ids) => ids.includes(friend.id) ? ids.filter((id) => id !== friend.id) : [...ids, friend.id])}
+                style={[styles.groupFriend, groupFriendIds.includes(friend.id) && styles.groupFriendSelected]}>
+                <Text style={{ color: groupFriendIds.includes(friend.id) ? '#FFFFFF' : colors.text }}>{friend.userName}</Text>
+              </Pressable>)}
+            </ScrollView>
+            {!!groupError && <Text style={styles.groupError}>{groupError}</Text>}
+            <Pressable onPress={createGroup} style={styles.createGroupButton}><Text style={styles.createGroupText}>Create group</Text></Pressable>
+          </View>}
           <View style={styles.contentHeader}><Text style={styles.sectionTitle}>Messages</Text><View style={styles.filters}>{([['all', 'All'], ['online', 'Online'], ['groups', 'Groups']] as const).map(([value, label]) => <Pressable key={value} onPress={() => setFilter(value)} style={[styles.filter, filter === value && styles.filterActive]}><Text style={[styles.filterText, filter === value && styles.filterTextActive]}>{label}</Text></Pressable>)}</View></View>
           {loading && <ActivityIndicator color={colors.primary} style={styles.loader} />}
         </>}
@@ -91,7 +123,7 @@ export default function ChatsScreen() {
         renderItem={({ item }) => {
           const person = displayPerson(item); const message = latest[item.id];
           const title = item.isGroupChat ? item.roomName : person?.userName || item.roomName;
-          return <Pressable onPress={() => openRoom(item)} style={({ pressed }) => [styles.room, pressed && styles.roomPressed]}><Avatar imageUrl={person?.profilePictureUrl} name={title} online={person?.isOnline} size={52} /><View style={styles.roomText}><View style={styles.roomTop}><Text numberOfLines={1} style={styles.roomName}>{title}</Text><Text style={styles.time}>{relativeTime(message?.timestamp || item.createdAt)}</Text></View><Text numberOfLines={1} style={styles.preview}>{message?.senderId === user?.id ? 'You: ' : ''}{message?.content || 'Tap to open conversation'}</Text></View><Ionicons color={colors.border} name="chevron-forward" size={17} /></Pressable>;
+          return <Pressable onPress={() => openRoom(item)} style={({ pressed }) => [styles.room, pressed && styles.roomPressed]}><Avatar imageUrl={person?.profilePictureUrl} name={title} online={person?.isOnline} size={52} /><View style={styles.roomText}><View style={styles.roomTop}><Text numberOfLines={1} style={styles.roomName}>{title}</Text><Text style={styles.time}>{relativeTime(message?.timestamp || item.createdAt)}</Text></View><Text numberOfLines={1} style={styles.preview}>{message?.senderId === user?.id ? 'You: ' : ''}{message?.content || 'Tap to open conversation'}</Text></View>{!!item.unreadCount && <View style={styles.unreadBadge}><Text style={styles.unreadText}>{item.unreadCount}</Text></View>}<Ionicons color={colors.border} name="chevron-forward" size={17} /></Pressable>;
         }}
       />
     </SafeAreaView>
@@ -103,7 +135,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 }, headerTitle: { color: colors.text, fontSize: 27, fontWeight: '900', letterSpacing: -0.8 }, iconButton: { alignItems: 'center', backgroundColor: `${colors.surface}CC`, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
   matches: { gap: 15, minHeight: 88, paddingHorizontal: 20, paddingVertical: 8 }, match: { alignItems: 'center', gap: 6, width: 60 }, matchName: { color: colors.text, fontSize: 10, maxWidth: 60 }, storyRing: { borderColor: colors.primary, borderRadius: 32, borderWidth: 1.5, padding: 2 }, addStory: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.surface, borderRadius: 9, borderWidth: 2, bottom: -1, height: 18, justifyContent: 'center', position: 'absolute', right: -1, width: 18 },
   search: { alignItems: 'center', backgroundColor: `${colors.surface}E8`, borderColor: `${colors.surface}99`, borderRadius: 17, borderWidth: 1, flexDirection: 'row', gap: 10, marginHorizontal: 20, marginTop: 10, paddingHorizontal: 15 }, searchInput: { color: colors.text, flex: 1, fontSize: 14, height: 50 },
+  groupForm: { backgroundColor: colors.surface, gap: 10, padding: 20 }, groupNameInput: { backgroundColor: colors.surfaceMuted, borderRadius: 12, color: colors.text, padding: 12 }, groupFriend: { borderColor: colors.border, borderRadius: 16, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 }, groupFriendSelected: { backgroundColor: colors.primary }, groupError: { color: colors.danger, fontSize: 12 }, createGroupButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, padding: 12 }, createGroupText: { color: '#FFFFFF', fontWeight: '800' },
   contentHeader: { gap: 13, paddingHorizontal: 20, paddingTop: 21 }, sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '900' }, filters: { flexDirection: 'row', gap: 8 }, filter: { backgroundColor: colors.surfaceMuted, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }, filterActive: { backgroundColor: colors.primary }, filterText: { color: colors.textMuted, fontSize: 12, fontWeight: '700' }, filterTextActive: { color: '#FFFFFF' },
-  loader: { padding: 25 }, room: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 16, marginTop: 10, minHeight: 78, paddingHorizontal: 14, paddingVertical: 11 }, roomPressed: { backgroundColor: colors.primarySoft, transform: [{ scale: 0.99 }] }, roomText: { flex: 1, gap: 6 }, roomTop: { alignItems: 'center', flexDirection: 'row', gap: 10 }, roomName: { color: colors.text, flex: 1, fontSize: 15, fontWeight: '800' }, time: { color: colors.textMuted, fontSize: 10 }, preview: { color: colors.textMuted, fontSize: 12 },
+  loader: { padding: 25 }, room: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 16, marginTop: 10, minHeight: 78, paddingHorizontal: 14, paddingVertical: 11 }, roomPressed: { backgroundColor: colors.primarySoft, transform: [{ scale: 0.99 }] }, roomText: { flex: 1, gap: 6 }, roomTop: { alignItems: 'center', flexDirection: 'row', gap: 10 }, roomName: { color: colors.text, flex: 1, fontSize: 15, fontWeight: '800' }, time: { color: colors.textMuted, fontSize: 10 }, preview: { color: colors.textMuted, fontSize: 12 }, unreadBadge: { backgroundColor: colors.primary, borderRadius: 12, minWidth: 24, paddingHorizontal: 5, paddingVertical: 3 }, unreadText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', textAlign: 'center' },
   muted: { color: colors.textMuted, fontSize: 13, lineHeight: 20, textAlign: 'center' }, empty: { alignItems: 'center', gap: 8, padding: 42 }, emptyTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
 });
