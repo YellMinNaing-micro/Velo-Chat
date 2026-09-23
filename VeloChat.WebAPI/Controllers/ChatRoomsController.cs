@@ -5,7 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using MongoDB.Driver;
 using VeloChat.WebAPI.Data;
+using VeloChat.WebAPI.Hubs;
 using VeloChat.WebAPI.Models;
 
 namespace VeloChat.WebAPI.Controllers;
@@ -17,37 +20,57 @@ namespace VeloChat.WebAPI.Controllers;
 public class ChatRoomsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IMongoCollection<Message> _messages;
+    private readonly IHubContext<ChatHub> _hub;
 
-    public ChatRoomsController(AppDbContext context)
+    public ChatRoomsController(AppDbContext context, IMongoDatabase mongoDatabase, IHubContext<ChatHub> hub)
     {
         _context = context;
+        _messages = mongoDatabase.GetCollection<Message>("Messages");
+        _hub = hub;
     }
 
     [HttpPost("create")]
     [EndpointSummary("Create a chat room")]
-    [EndpointDescription("Creates a group or direct-message chat room and adds the authenticated user as its first participant.")]
+    [EndpointDescription("Creates a group room. Use the dm/{friendId} endpoint for direct messages.")]
     public async Task<IActionResult> CreateRoom([FromQuery] string? roomName, [FromQuery] bool isGroupChat)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return BadRequest("Invalid user.");
+        if (!isGroupChat) return BadRequest("Use the direct-message endpoint to start a private chat.");
+        if (string.IsNullOrWhiteSpace(roomName)) return BadRequest("Group name is required.");
 
         ChatRoom room = new ChatRoom
         {
-            RoomName = isGroupChat ? roomName : "Direct Message",
-            IsGroupChat = isGroupChat,
-            CreatedAt = DateTime.Now
+            RoomName = roomName.Trim(),
+            IsGroupChat = true,
+            CreatedAt = DateTime.UtcNow
         };
 
         room.RoomParticipants.Add(new RoomParticipant
         {
             UserId = userId,
-            JoinedAt = DateTime.Now
+            JoinedAt = DateTime.UtcNow
         });
 
         _context.ChatRooms.Add(room);
         await _context.SaveChangesAsync();
 
-        return Ok(room);
+        return Ok(new
+        {
+            room.Id, room.RoomName, room.IsGroupChat, room.CreatedAt,
+            Participants = new[]
+            {
+                new
+                {
+                    UserId = userId,
+                    UserName = User.Identity?.Name,
+                    ProfilePictureUrl = (string?)null,
+                    IsOnline = true
+                }
+            },
+            UnreadCount = 0
+        });
     }
 
     [HttpGet("my-rooms")]
@@ -60,14 +83,15 @@ public class ChatRoomsController : ControllerBase
 
         var rooms = await _context.RoomParticipants
             .Where(rp => rp.UserId == userId)
-            .Select(rp => rp.ChatRoom)
-            .Select(cr => new
+            .Select(rp => new
             {
-                cr.Id,
-                cr.RoomName,
-                cr.IsGroupChat,
-                cr.CreatedAt,
-                Participants = cr.RoomParticipants.Select(p => new
+                rp.LastReadAt,
+                rp.JoinedAt,
+                rp.ChatRoom.Id,
+                rp.ChatRoom.RoomName,
+                rp.ChatRoom.IsGroupChat,
+                rp.ChatRoom.CreatedAt,
+                Participants = rp.ChatRoom.RoomParticipants.Select(p => new
                 {
                     p.UserId,
                     p.User.UserName,
@@ -77,7 +101,59 @@ public class ChatRoomsController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(rooms);
+        var result = new List<object>();
+        foreach (var room in rooms)
+        {
+            var since = room.LastReadAt.HasValue
+                ? DateTime.SpecifyKind(room.LastReadAt.Value, DateTimeKind.Utc)
+                : DateTime.MinValue;
+            var unreadCount = await _messages.CountDocumentsAsync(m =>
+                m.RoomId == room.Id.ToString() && m.SenderId != userId && m.Timestamp > since);
+            result.Add(new
+            {
+                room.Id, room.RoomName, room.IsGroupChat, room.CreatedAt,
+                room.Participants, UnreadCount = unreadCount
+            });
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("{roomId}/read")]
+    [EndpointSummary("Mark a room as read")]
+    public async Task<IActionResult> MarkRead(Guid roomId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var participant = await _context.RoomParticipants.FindAsync(roomId, userId);
+        if (participant == null) return NotFound("Room membership not found.");
+        participant.LastReadAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPost("{roomId}/members/{friendId}")]
+    [EndpointSummary("Add an accepted friend to a group room")]
+    public async Task<IActionResult> AddGroupMember(Guid roomId, string friendId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var room = await _context.ChatRooms.Include(r => r.RoomParticipants)
+            .FirstOrDefaultAsync(r => r.Id == roomId);
+        if (room == null) return NotFound("Room not found.");
+        if (!room.IsGroupChat) return BadRequest("Only group rooms can have members added.");
+        if (!room.RoomParticipants.Any(p => p.UserId == userId)) return Forbid();
+        if (room.RoomParticipants.Any(p => p.UserId == friendId)) return Conflict("User is already a member.");
+        var isFriend = await _context.Friendships.AnyAsync(f =>
+            ((f.UserId == userId && f.FriendId == friendId) ||
+             (f.UserId == friendId && f.FriendId == userId)) && f.Status == "Accepted");
+        if (!isFriend) return BadRequest("Only accepted friends can be added.");
+
+        room.RoomParticipants.Add(new RoomParticipant
+        {
+            UserId = friendId, JoinedAt = DateTime.UtcNow, LastReadAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+        await _hub.Clients.User(friendId).SendAsync("RoomAdded", roomId);
+        return NoContent();
     }
 
     [HttpPost("{roomId}/join")]
@@ -153,12 +229,12 @@ public class ChatRoomsController : ControllerBase
         {
             RoomName = $"{User.Identity?.Name} & {friendUser.UserName}",
             IsGroupChat = false,
-            CreatedAt = DateTime.Now
+            CreatedAt = DateTime.UtcNow
         };
 
         // Add both participants
-        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = userId, JoinedAt = DateTime.Now });
-        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = friendId, JoinedAt = DateTime.Now });
+        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = userId, JoinedAt = DateTime.UtcNow });
+        newRoom.RoomParticipants.Add(new RoomParticipant { UserId = friendId, JoinedAt = DateTime.UtcNow });
 
         _context.ChatRooms.Add(newRoom);
         await _context.SaveChangesAsync();
