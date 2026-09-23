@@ -21,6 +21,7 @@ export type ChatRoom = {
   isGroupChat: boolean;
   createdAt: string;
   participants: Participant[];
+  unreadCount?: number;
 };
 
 export type Friend = {
