@@ -77,6 +77,10 @@ public class ChatHub : Hub
 
         // Broadcast message to everyone in the room
         await Clients.Group(roomId).SendAsync("ReceiveMessage", message);
+        var participantIds = await _dbContext.RoomParticipants
+            .Where(p => p.RoomId == Guid.Parse(roomId) && p.UserId != senderId)
+            .Select(p => p.UserId).ToListAsync();
+        await Clients.Users(participantIds).SendAsync("RoomMessage", new { roomId, senderId });
     }
 
     public async Task SendTyping(string roomId, bool isTyping)
