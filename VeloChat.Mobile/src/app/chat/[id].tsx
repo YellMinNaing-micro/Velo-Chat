@@ -3,7 +3,7 @@ import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signal
 import { LinearGradient } from 'expo-linear-gradient';
 import { Href, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
@@ -12,14 +12,18 @@ import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
 import { API_BASE_URL, api, getApiError } from '@/services/api';
 import { sessionStorage } from '@/services/session-storage';
-import { API_ROUTES, SIGNALR_EVENTS, type ChatMessage } from '@velo/shared';
+import { API_ROUTES, SIGNALR_EVENTS, type ChatMessage, type ChatRoom, type Friend } from '@velo/shared';
 
 export default function ConversationScreen() {
   const { colors, mode } = useAppTheme();
   const styles = createStyles(colors);
-  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string; friendId?: string }>();
+  const params = useLocalSearchParams<{ id: string; name?: string; avatar?: string; friendId?: string; group?: string }>();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [groupFriends, setGroupFriends] = useState<Friend[]>([]);
+  const [showGroupFriends, setShowGroupFriends] = useState(false);
   const [text, setText] = useState('');
   const [status, setStatus] = useState('Connecting…');
   const [typingName, setTypingName] = useState('');
@@ -27,6 +31,7 @@ export default function ConversationScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const connectionRef = useRef<HubConnection | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preserveOlderScroll = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -38,7 +43,10 @@ export default function ConversationScreen() {
     connectionRef.current = connection;
 
     connection.on(SIGNALR_EVENTS.receiveMessage, (message: ChatMessage) => {
-      if (message.roomId === params.id) setMessages((items) => items.some((item) => item.id === message.id) ? items : [...items, message]);
+      if (message.roomId === params.id) {
+        setMessages((items) => items.some((item) => item.id === message.id) ? items : [...items, message]);
+        if (message.senderId !== user?.id) api.post(API_ROUTES.chatRooms.markRead(params.id)).catch(() => undefined);
+      }
     });
     connection.on('UserTyping', (info: { roomId: string; userId: string; username: string; isTyping: boolean }) => {
       if (info.roomId === params.id && info.userId !== user?.id) setTypingName(info.isTyping ? info.username : '');
@@ -50,7 +58,8 @@ export default function ConversationScreen() {
     (async () => {
       try {
         const history = await api.get<ChatMessage[]>(API_ROUTES.messages.room(params.id));
-        if (active) setMessages(history.data);
+        if (active) { setMessages(history.data); setHasOlder(history.data.length === 50); }
+        await api.post(API_ROUTES.chatRooms.markRead(params.id));
         await connection.start();
         await connection.invoke('JoinRoom', params.id);
         if (active) setStatus('Online');
@@ -63,6 +72,39 @@ export default function ConversationScreen() {
       connection.stop();
     };
   }, [params.id, user?.id]);
+
+  const loadOlder = async () => {
+    if (!hasOlder || loadingOlder || !messages.length) return;
+    setLoadingOlder(true);
+    try {
+      const response = await api.get<ChatMessage[]>(API_ROUTES.messages.room(params.id, messages[0].id));
+      preserveOlderScroll.current = true;
+      setHasOlder(response.data.length === 50);
+      setMessages((items) => [...response.data.filter((message) => !items.some((item) => item.id === message.id)), ...items]);
+    } catch (err) { setError(getApiError(err, 'Unable to load older messages.')); }
+    finally { setLoadingOlder(false); }
+  };
+
+  const openGroupFriends = async () => {
+    if (params.group !== 'true') return;
+    try {
+      const [friendsResponse, roomsResponse] = await Promise.all([
+        api.get<Friend[]>(API_ROUTES.friendships.list),
+        api.get<ChatRoom[]>(API_ROUTES.chatRooms.mine),
+      ]);
+      const memberIds = new Set(roomsResponse.data.find((room) => room.id === params.id)?.participants.map((p) => p.userId));
+      setGroupFriends(friendsResponse.data.filter((friend) => !memberIds.has(friend.id)));
+      setShowGroupFriends(true);
+    } catch (err) { setError(getApiError(err, 'Unable to load friends.')); }
+  };
+
+  const addGroupFriend = async (friendId: string) => {
+    try {
+      await api.post(API_ROUTES.chatRooms.addMember(params.id, friendId));
+      setShowGroupFriends(false);
+      setError('');
+    } catch (err) { setError(getApiError(err, 'Unable to add group member.')); }
+  };
 
   const changeText = (value: string) => {
     setText(value);
@@ -90,16 +132,32 @@ export default function ConversationScreen() {
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.back}><Ionicons color={colors.text} name="chevron-back" size={24} /></Pressable>
         <Pressable disabled={!params.friendId} onPress={() => router.push({ pathname: '/friend/[id]', params: { id: params.friendId!, name: params.name || '', avatar: params.avatar || '' } } as unknown as Href)} style={styles.profileHeader}><Avatar imageUrl={params.avatar} name={params.name} online={status === 'Online'} size={42} /><View style={styles.headerText}><Text numberOfLines={1} style={styles.name}>{params.name || 'Conversation'}</Text><Text style={styles.status}>{typingName ? `${typingName} is typing…` : status}</Text></View></Pressable>
-        <Pressable style={styles.more}><Ionicons color={colors.textMuted} name="ellipsis-horizontal" size={23} /></Pressable>
+        {params.group === 'true' && <Pressable onPress={openGroupFriends} style={styles.more}><Ionicons color={colors.textMuted} name="person-add-outline" size={23} /></Pressable>}
       </View>
+      {showGroupFriends && <View style={styles.memberPicker}>
+        <Text style={styles.memberPickerTitle}>Add a friend to this group</Text>
+        {groupFriends.length === 0 && <Text style={{ color: colors.textMuted }}>All your friends are in this group.</Text>}
+        <ScrollView style={{ maxHeight: 220 }}>{groupFriends.map((friend) =>
+          <Pressable key={friend.id} onPress={() => addGroupFriend(friend.id)} style={styles.memberChoice}>
+            <Text style={{ color: colors.text }}>{friend.userName}</Text>
+          </Pressable>)}</ScrollView>
+        <Pressable onPress={() => setShowGroupFriends(false)}><Text style={{ color: colors.primary }}>Cancel</Text></Pressable>
+      </View>}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0} style={styles.flex}>
         {!!error && <Text style={styles.error}>{error}</Text>}
         <LinearGradient colors={chatGradient} style={styles.chatBackdrop}><FlatList
           ref={listRef}
           data={messages}
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           keyExtractor={(item, index) => item.id || `${item.timestamp}-${index}`}
           contentContainerStyle={styles.messages}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={() => {
+            if (preserveOlderScroll.current) { preserveOlderScroll.current = false; return; }
+            listRef.current?.scrollToEnd({ animated: true });
+          }}
+          ListHeaderComponent={hasOlder ? <Pressable onPress={loadOlder} disabled={loadingOlder} style={styles.loadOlder}>
+            <Text style={{ color: colors.primary }}>{loadingOlder ? 'Loading…' : 'Load older messages'}</Text>
+          </Pressable> : null}
           ListEmptyComponent={<View style={styles.empty}><Ionicons color={colors.primary} name="sparkles-outline" size={28} /><Text style={styles.emptyTitle}>Start the conversation</Text><Text style={styles.emptyCopy}>Say hello to {params.name || 'your friend'}.</Text></View>}
           renderItem={({ item }) => {
             const mine = item.senderId === user?.id;
@@ -114,6 +172,7 @@ export default function ConversationScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: { backgroundColor: colors.surface, flex: 1 }, flex: { flex: 1 }, header: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: 10, minHeight: 68, paddingHorizontal: 12 }, back: { alignItems: 'center', height: 42, justifyContent: 'center', width: 34 }, profileHeader: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 10 }, headerText: { flex: 1, gap: 2 }, name: { color: colors.text, fontSize: 16, fontWeight: '800' }, status: { color: colors.primaryDark, fontSize: 11 }, more: { padding: 8 },
+  memberPicker: { backgroundColor: colors.surface, borderBottomColor: colors.border, borderBottomWidth: 1, gap: 10, padding: 16 }, memberPickerTitle: { color: colors.text, fontWeight: '700' }, memberChoice: { borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 12 }, loadOlder: { alignSelf: 'center', padding: 12 },
   error: { backgroundColor: colors.dangerSoft, color: colors.danger, fontSize: 12, padding: 10, textAlign: 'center' }, chatBackdrop: { flex: 1 }, messages: { flexGrow: 1, gap: 10, justifyContent: 'flex-end', padding: 16 }, messageRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, maxWidth: '84%' }, messageRowMine: { alignSelf: 'flex-end' }, messageStack: { gap: 4, maxWidth: '100%' }, bubble: { borderColor: colors.border, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 10 }, bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 5, borderColor: colors.primary }, bubbleOther: { backgroundColor: `${colors.surface}E8`, borderBottomLeftRadius: 5 }, messageText: { color: colors.text, fontSize: 15, lineHeight: 21 }, messageTextMine: { color: '#FFFFFF' }, time: { color: colors.textMuted, fontSize: 9, marginLeft: 4 }, timeMine: { alignSelf: 'flex-end', marginRight: 4 }, media: { borderRadius: 16, height: 190, width: 220 },
   empty: { alignItems: 'center', gap: 6, padding: 30 }, emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '800' }, emptyCopy: { color: colors.textMuted, fontSize: 13 }, composer: { alignItems: 'flex-end', backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', gap: 9, padding: 10, paddingHorizontal: 14 }, attach: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 }, input: { backgroundColor: colors.surfaceMuted, borderRadius: 20, color: colors.text, flex: 1, fontSize: 15, maxHeight: 110, minHeight: 42, paddingHorizontal: 16, paddingVertical: 10 }, send: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 21, height: 42, justifyContent: 'center', width: 42 }, sendDisabled: { backgroundColor: colors.border },
 });
