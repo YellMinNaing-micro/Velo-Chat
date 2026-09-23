@@ -82,7 +82,7 @@ public class ChatRoomsController : ControllerBase
 
     [HttpPost("{roomId}/join")]
     [EndpointSummary("Join a chat room")]
-    [EndpointDescription("Adds the authenticated user to the specified chat room when they are not already a participant.")]
+    [EndpointDescription("Checks existing membership. Joining another user's room requires an invitation flow and is not supported yet.")]
     public async Task<IActionResult> JoinRoom(Guid roomId)
     {
         string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -95,16 +95,9 @@ public class ChatRoomsController : ControllerBase
         if (room == null) return NotFound("Room not found.");
 
         if (room.RoomParticipants.Any(rp => rp.UserId == userId))
-            return BadRequest("User already in room.");
+            return Ok("Already a member of this room.");
 
-        room.RoomParticipants.Add(new RoomParticipant
-        {
-            UserId = userId,
-            JoinedAt = DateTime.Now
-        });
-
-        await _context.SaveChangesAsync();
-        return Ok("Joined room successfully.");
+        return Forbid();
     }
 
     [HttpPost("dm/{friendId}")]
