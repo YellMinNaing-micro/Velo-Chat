@@ -5,11 +5,12 @@ VeloChat သည် ASP.NET Core 10၊ SignalR၊ React/Vite နှင့် Expo
 ## လက်ရှိလုပ်ဆောင်ချက်များ
 
 - အကောင့်ဖွင့်ခြင်း၊ login၊ token refresh၊ profile ပြင်ခြင်းနှင့် password ပြောင်းခြင်း
-- Friend ရှာခြင်းနှင့် request ပို့ခြင်း၊ တိုက်ရိုက် chat၊ online status နှင့် typing indicator
+- Friend ရှာခြင်းနှင့် request ပို့ခြင်း၊ တိုက်ရိုက် chat၊ group ဖန်တီးပြီး accepted friend ထည့်ခြင်း၊ online status နှင့် typing indicator
 - Web၊ Android/iOS client များနှင့် light/dark theme
 - Message history ကြည့်ခြင်းနှင့် SignalR room action များအတွက် room membership စစ်ဆေးခြင်း
+- စာဟောင်းများ ဆက်ဖတ်ခြင်းနှင့် room ဖွင့်သည့်အခါ ရှင်းသွားသော unread count
 
-Message history သည် **နောက်ဆုံး message ၁၀၀** ကို အဟောင်းမှအသစ်သို့ ပြသသည်။ စာဟောင်းများကို page ခွဲယူခြင်း၊ read receipt၊ push notification နှင့် file upload မရှိသေးပါ။ Room ဖန်တီးသူသည် ကနဦးတစ်ဦးတည်းသော member ဖြစ်သည်။ `POST /api/chatrooms/{roomId}/join` မှတစ်ဆင့် တခြားသူ၏ room ထဲကို တန်းဝင်၍မရတော့ပါ။ Group chat တွင် member ထပ်ထည့်ရန် invitation flow လိုအပ်သည်။
+Message history သည် တစ်ကြိမ်လျှင် **စာ ၅၀** ကို အဟောင်းမှအသစ်သို့ ပြသပြီး စာဟောင်းများကို ဆက်ဖတ်နိုင်သည်။ Group member က accepted friend ကို group ထဲ ချက်ချင်းထည့်နိုင်သည်။ သီးခြား invitation လက်ခံရန်အဆင့် မရှိသေးပါ။ Message တစ်ခုချင်း read receipt၊ push notification နှင့် file upload မရှိသေးပါ။ `POST /api/chatrooms/{roomId}/join` မှတစ်ဆင့် မသက်ဆိုင်သူက room ထဲကို တန်းဝင်၍မရပါ။
 
 ## လိုအပ်ချက်များ
 
@@ -32,6 +33,8 @@ pnpm web
 ```
 
 Web client ကို `http://localhost:5173` တွင် ဖွင့်နိုင်သည်။ Local HTTPS API သည် `https://localhost:7010` ဖြစ်ပြီး Development အချိန် Scalar API docs ကို `https://localhost:7010/scalar/v1` တွင် ကြည့်နိုင်သည်။
+
+ဒီ update ကို pull လုပ်ပြီးပါက အထက်ပါ migration command ကို run ပါ။ Unread count အတွက် room membership တွင် `LastReadAt` column ထပ်ထည့်ပေးသည်။
 
 ## ဖုန်းအစစ်ဖြင့် စမ်းခြင်း
 
