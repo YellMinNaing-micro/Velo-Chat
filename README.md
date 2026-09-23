@@ -5,11 +5,12 @@ VeloChat is a web and mobile messaging app built with ASP.NET Core 10, SignalR, 
 ## Current features
 
 - Registration, login, token refresh, profile editing, and password changes
-- Friend search and requests, direct messages, online presence, and typing indicators
+- Friend search and requests, direct messages, group creation and adding accepted friends, online presence, and typing indicators
 - Web and Android/iOS clients with light and dark themes
 - Room membership checks for message history and SignalR room actions
+- Older-message loading and unread counts that clear when a room is opened
 
-Message history returns the **latest 100 messages** in chronological display order. Older-message pagination, read receipts, push notifications, and file uploads are not implemented. A room creator is its only initial member. `POST /api/chatrooms/{roomId}/join` no longer allows arbitrary users to join; group rooms need an invitation flow before additional members can join.
+Message history loads **50 messages per page** (up to 100 via the API) in chronological display order. Group members can add accepted friends; this adds them immediately, without a separate invitation acceptance step. Read receipts per message, push notifications, and file uploads are not implemented. `POST /api/chatrooms/{roomId}/join` does not allow arbitrary users to join.
 
 ## Requirements
 
@@ -32,6 +33,8 @@ pnpm web
 ```
 
 Open `http://localhost:5173`. The local HTTPS API is at `https://localhost:7010`; Scalar API docs are at `https://localhost:7010/scalar/v1` in Development.
+
+Run the migration command above after pulling these changes; it adds `LastReadAt` to room memberships for unread counts.
 
 ## Mobile on a physical device
 
