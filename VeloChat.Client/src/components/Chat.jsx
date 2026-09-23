@@ -14,6 +14,11 @@ const Chat = () => {
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [selectedFriendIds, setSelectedFriendIds] = useState([]);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [groupError, setGroupError] = useState('');
   const [inputText, setInputText] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -40,6 +45,8 @@ const Chat = () => {
 
   const hubConnectionRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const messageStreamRef = useRef(null);
+  const preserveScrollRef = useRef(null);
   const activeRoomRef = useRef(null);
   const prevRoomIdRef = useRef(null);
 
@@ -85,7 +92,13 @@ const Chat = () => {
 
   // Scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (preserveScrollRef.current && messageStreamRef.current) {
+      const { height, top } = preserveScrollRef.current;
+      messageStreamRef.current.scrollTop = top + messageStreamRef.current.scrollHeight - height;
+      preserveScrollRef.current = null;
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   // 2. Establish SignalR Hub Connection (Once on mount)
@@ -103,9 +116,21 @@ const Chat = () => {
     connection.on(SIGNALR_EVENTS.receiveMessage, (message) => {
       // If message belongs to active room, append to state
       if (activeRoomRef.current && message.roomId === activeRoomRef.current.id) {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => prev.some((item) => item.id === message.id) ? prev : [...prev, message]);
+        if (message.senderId !== user.id) api.post(API_ROUTES.chatRooms.markRead(message.roomId)).catch(console.error);
+      } else if (message.senderId !== user.id) {
+        setRooms((prev) => prev.map((room) => room.id === message.roomId
+          ? { ...room, unreadCount: (room.unreadCount || 0) + 1 } : room));
       }
     });
+
+    connection.on(SIGNALR_EVENTS.roomMessage, ({ roomId }) => {
+      if (activeRoomRef.current?.id !== roomId) {
+        setRooms((prev) => prev.map((room) => room.id === roomId
+          ? { ...room, unreadCount: (room.unreadCount || 0) + 1 } : room));
+      }
+    });
+    connection.on(SIGNALR_EVENTS.roomAdded, () => fetchData());
 
     connection.on('UserTyping', (typingInfo) => {
       const { roomId, username, isTyping } = typingInfo;
@@ -139,7 +164,7 @@ const Chat = () => {
         connection.stop();
       }
     };
-  }, []);
+  }, [user.id]);
 
   // 3. Handle Active Room Switching in SignalR Hub Group
   useEffect(() => {
@@ -164,14 +189,52 @@ const Chat = () => {
 
   const handleRoomSelect = async (room) => {
     setActiveRoom(room);
+    setShowMemberPicker(false);
+    setGroupError('');
     setMessages([]);
+    setHasOlder(false);
+    setRooms((prev) => prev.map((item) => item.id === room.id ? { ...item, unreadCount: 0 } : item));
 
     try {
       // Load historical messages from MongoDB
       const response = await api.get(API_ROUTES.messages.room(room.id));
       setMessages(response.data);
+      setHasOlder(response.data.length === 50);
+      await api.post(API_ROUTES.chatRooms.markRead(room.id));
     } catch (err) {
       console.error('Error switching room:', err);
+    }
+  };
+
+  const loadOlder = async () => {
+    if (!activeRoom || !hasOlder || loadingOlder || !messages.length) return;
+    setLoadingOlder(true);
+    try {
+      const stream = messageStreamRef.current;
+      if (stream) preserveScrollRef.current = { height: stream.scrollHeight, top: stream.scrollTop };
+      const response = await api.get(API_ROUTES.messages.room(activeRoom.id, messages[0].id));
+      setHasOlder(response.data.length === 50);
+      setMessages((prev) => [...response.data.filter((item) => !prev.some((old) => old.id === item.id)), ...prev]);
+    } catch (err) {
+      preserveScrollRef.current = null;
+      console.error('Unable to load older messages:', err);
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  const handleAddMember = async (friendId) => {
+    if (!activeRoom?.isGroupChat || !friendId) return;
+    try {
+      await api.post(API_ROUTES.chatRooms.addMember(activeRoom.id, friendId));
+      setShowMemberPicker(false);
+      setGroupError('');
+      const response = await api.get(API_ROUTES.chatRooms.mine);
+      setRooms(response.data);
+      setActiveRoom(response.data.find((room) => room.id === activeRoom.id));
+    } catch (err) {
+      console.error('Unable to add group member:', err);
+      setGroupError('Could not add this friend. Please try again.');
     }
   };
 
@@ -231,18 +294,34 @@ const Chat = () => {
   // 6. Create Room
   const handleCreateRoom = async (e) => {
     e.preventDefault();
-    if (!newRoomName.trim()) return;
+    if (!selectedFriendIds.length || (isGroupChat && !newRoomName.trim())) {
+      setGroupError(isGroupChat ? 'Enter a name and select at least one friend.' : 'Select a friend to chat with.');
+      return;
+    }
 
     try {
-      const response = await api.post(
-        `${API_ROUTES.chatRooms.create}?roomName=${encodeURIComponent(newRoomName)}&isGroupChat=${isGroupChat}`
-      );
-      setRooms((prev) => [...prev, response.data]);
+      setGroupError('');
+      let room;
+      if (isGroupChat) {
+        const response = await api.post(
+          `${API_ROUTES.chatRooms.create}?roomName=${encodeURIComponent(newRoomName.trim())}&isGroupChat=true`
+        );
+        room = response.data;
+        await Promise.all(selectedFriendIds.map((friendId) =>
+          api.post(API_ROUTES.chatRooms.addMember(room.id, friendId))));
+      } else {
+        const response = await api.post(API_ROUTES.chatRooms.directMessage(selectedFriendIds[0]));
+        room = response.data;
+      }
+      const roomsResponse = await api.get(API_ROUTES.chatRooms.mine);
+      setRooms(roomsResponse.data);
       setNewRoomName('');
+      setSelectedFriendIds([]);
       setShowCreateRoom(false);
-      handleRoomSelect(response.data);
+      handleRoomSelect(roomsResponse.data.find((item) => item.id === room.id));
     } catch (err) {
       console.error('Failed to create room:', err);
+      setGroupError('Could not create the room. Please try again.');
     }
   };
 
@@ -467,26 +546,43 @@ const Chat = () => {
             flexDirection: 'column',
             gap: '12px'
           }}>
-            <input 
+            {isGroupChat && <input
               type="text" 
-              placeholder="Chat name..." 
+              placeholder="Group name..."
               className="glass-input"
               value={newRoomName}
               onChange={(e) => setNewRoomName(e.target.value)}
               required
               style={{ padding: '8px 12px', fontSize: '14px' }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-              <input 
-                type="checkbox" 
-                id="isGroup" 
-                checked={isGroupChat}
-                onChange={(e) => setIsGroupChat(e.target.checked)}
-              />
-              <label htmlFor="isGroup" style={{ color: 'var(--text-secondary)' }}>Is Group Chat?</label>
+            />}
+            <div className="chat-type-picker" role="group" aria-label="Chat type">
+              <button type="button" className={`chat-type-option ${!isGroupChat ? 'active' : ''}`}
+                aria-pressed={!isGroupChat} onClick={() => { setIsGroupChat(false); setSelectedFriendIds((ids) => ids.slice(0, 1)); setGroupError(''); }}>
+                <MessageSquare size={15} /> Direct
+              </button>
+              <button type="button" className={`chat-type-option ${isGroupChat ? 'active' : ''}`}
+                aria-pressed={isGroupChat} onClick={() => { setIsGroupChat(true); setGroupError(''); }}>
+                <Users size={15} /> Group
+              </button>
             </div>
+            <div className="group-friend-field">
+              <div className="group-friend-title">{isGroupChat ? 'Add friends' : 'Choose a friend'} <span>{selectedFriendIds.length} selected</span></div>
+              <div className="group-friend-options">
+                {friends.length === 0 && <span className="group-friend-empty">Add a friend first to start a chat.</span>}
+                {friends.map((friend) => <button key={friend.id} type="button"
+                  className={`group-friend-chip ${selectedFriendIds.includes(friend.id) ? 'selected' : ''}`}
+                  aria-pressed={selectedFriendIds.includes(friend.id)}
+                  onClick={() => setSelectedFriendIds((current) => current.includes(friend.id)
+                    ? current.filter((id) => id !== friend.id) : isGroupChat ? [...current, friend.id] : [friend.id])}>
+                  <span className="group-friend-avatar">{friend.userName?.slice(0, 1).toUpperCase()}</span>
+                  <span>{friend.userName}</span>
+                  {selectedFriendIds.includes(friend.id) && <span aria-hidden="true">✓</span>}
+                </button>)}
+              </div>
+            </div>
+            {!!groupError && <p className="group-form-error" role="alert">{groupError}</p>}
             <button type="submit" className="btn-premium" style={{ padding: '8px', fontSize: '13px' }}>
-              Create Chat Room
+              {isGroupChat ? 'Create group' : 'Start chat'}
             </button>
           </form>
         )}
@@ -651,6 +747,7 @@ const Chat = () => {
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                         {room.isGroupChat ? 'Group' : 'Private'}
+                        {!!room.unreadCount && <strong style={{ marginLeft: '8px', color: 'var(--accent-primary)' }}>{room.unreadCount} unread</strong>}
                       </div>
                     </div>
                   </div>
@@ -783,10 +880,28 @@ const Chat = () => {
                   <Users size={14} /> {activeRoom.participants?.length || 1} participant(s)
                 </div>
               </div>
+              {activeRoom.isGroupChat && <div className="group-member-action">
+                <button type="button" className="group-add-trigger" aria-expanded={showMemberPicker}
+                  onClick={() => { setShowMemberPicker((value) => !value); setGroupError(''); }}>
+                  <UserPlus size={16} /> Add people
+                </button>
+                {showMemberPicker && <div className="group-member-popover">
+                  <div className="group-member-popover-title">Add a friend</div>
+                  {friends.filter((friend) => !activeRoom.participants?.some((p) => p.userId === friend.id)).length === 0
+                    ? <p className="group-friend-empty">All your friends are in this group.</p>
+                    : friends.filter((friend) => !activeRoom.participants?.some((p) => p.userId === friend.id))
+                      .map((friend) => <button key={friend.id} type="button" className="group-member-choice"
+                        onClick={() => handleAddMember(friend.id)}>
+                        <span className="group-friend-avatar">{friend.userName?.slice(0, 1).toUpperCase()}</span>
+                        <span>{friend.userName}</span><Plus size={15} />
+                      </button>)}
+                  {!!groupError && <p className="group-form-error" role="alert">{groupError}</p>}
+                </div>}
+              </div>}
             </div>
 
             {/* Chat Message Stream */}
-            <div style={{
+            <div ref={messageStreamRef} style={{
               flex: 1,
               padding: '24px',
               overflowY: 'auto',
@@ -795,6 +910,8 @@ const Chat = () => {
               gap: '16px',
               background: 'var(--bg-chat-stream)'
             }}>
+              {hasOlder && <button type="button" onClick={loadOlder} disabled={loadingOlder}
+                style={{ alignSelf: 'center' }}>{loadingOlder ? 'Loading…' : 'Load older messages'}</button>}
               {messages.length === 0 ? (
                 <div style={{
                   margin: 'auto',
