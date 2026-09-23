@@ -123,3 +123,7 @@ pnpm build
 pnpm typecheck
 pnpm lint
 ```
+
+## License
+
+VeloChat is available under the [MIT License](./LICENSE).
