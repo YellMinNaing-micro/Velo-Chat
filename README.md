@@ -62,15 +62,17 @@ sequenceDiagram
 
 Friends must accept a request before a direct room can be started or a person can be added to a group. When a client opens a room, it loads recent history, joins the SignalR room, and marks the room read. The client can request older history using the `before` cursor. Unread counts use each participant's `LastReadAt`.
 
-## Run API tests
+## Run tests
 
 From the repository root:
 
 ```powershell
 dotnet test VeloChat.WebAPI/VeloChat.WebAPI.slnx
+pnpm test
 ```
 
 The tests use SQLite in memory for relational data and mocks for Identity, MongoDB, and SignalR. They do not require running SQL Server or MongoDB.
+The web tests use Vitest for login and session behavior; the mobile tests use Jest for secure storage and API token refresh behavior.
 
 ## Prerequisites
 
