@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
 using VeloChat.WebAPI.Models;
 using VeloChat.WebAPI.Services;
@@ -45,5 +46,23 @@ public class TokenServiceTests
         Assert.Equal(64, Convert.FromBase64String(first).Length);
         Assert.Equal(64, Convert.FromBase64String(second).Length);
         Assert.NotEqual(first, second);
+    }
+
+    [Fact]
+    public void AccessToken_RejectsTampering()
+    {
+        var service = CreateService();
+        var token = service.GenerateAccessToken(new ApplicationUser { Id = "alice" }, []);
+        var parts = token.Split('.');
+        parts[2] = parts[2][0] == 'a' ? "b" + parts[2][1..] : "a" + parts[2][1..];
+
+        Assert.ThrowsAny<SecurityTokenException>(() => service.GetPrincipalFromExpiredToken(string.Join('.', parts)));
+    }
+
+    [Fact]
+    public void MissingSigningKey_ThrowsClearError()
+    {
+        var service = new TokenService(new ConfigurationBuilder().Build());
+        Assert.Throws<InvalidOperationException>(() => service.GenerateAccessToken(new ApplicationUser(), []));
     }
 }
