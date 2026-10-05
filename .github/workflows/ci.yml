@@ -1,4 +1,4 @@
-name: CI
+name: VeloChat CI Push Main
 
 on:
   push:
