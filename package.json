@@ -7,6 +7,7 @@
     "mobile": "pnpm --filter velochat.mobile start",
     "android": "pnpm --filter velochat.mobile android",
     "build": "pnpm --filter velochat-client build",
+    "test": "pnpm --filter velochat-client test && pnpm --filter velochat.mobile test",
     "lint": "pnpm --recursive --if-present lint",
     "typecheck": "pnpm --recursive --if-present typecheck"
   }
