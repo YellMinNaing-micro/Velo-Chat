@@ -7,6 +7,7 @@ VeloChat is a chat app built with ASP.NET Core 10, SignalR, React/Vite, and Expo
 | Project | Purpose |
 | --- | --- |
 | `VeloChat.WebAPI` | Authentication, friends, rooms, messages, and SignalR hub |
+| `VeloChat.WebAPI.Tests` | xUnit tests for API services, controllers, and hub validation |
 | `VeloChat.Client` | React web client |
 | `VeloChat.Mobile` | Expo app for Android and iOS |
 
@@ -60,6 +61,16 @@ sequenceDiagram
 ```
 
 Friends must accept a request before a direct room can be started or a person can be added to a group. When a client opens a room, it loads recent history, joins the SignalR room, and marks the room read. The client can request older history using the `before` cursor. Unread counts use each participant's `LastReadAt`.
+
+## Run API tests
+
+From the repository root:
+
+```powershell
+dotnet test VeloChat.WebAPI/VeloChat.WebAPI.slnx
+```
+
+The tests use SQLite in memory for relational data and mocks for Identity, MongoDB, and SignalR. They do not require running SQL Server or MongoDB.
 
 ## Prerequisites
 
